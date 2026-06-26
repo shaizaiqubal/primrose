@@ -1,0 +1,36 @@
+# Python backend
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+ENV/
+.env
+.envrc
+db.sqlite3
+db.sqlite3-journal
+
+# Frontend / Node
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+frontend/dist-ssr/
+*.local
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor / OS
+.DS_Store
+.vscode/
+!.vscode/extensions.json
+.idea/
