@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 client = QdrantClient(
     url=QDRANT_URL,
-    
-    port=QDRANT_PORT
+    port=QDRANT_PORT,
+    api_key=QDRANT_API_KEY
 )
 
 COLLECTION_NAME = "document_vectors"
