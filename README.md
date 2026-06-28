@@ -12,6 +12,7 @@
 ![Docker](https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey?style=flat-square)
 
+🌸 **Live application:** https://primroses.vercel.app
 
 Primrose is being built toward a single goal: making the hidden structure of scientific literature visible. Connections between ideas, clusters of related work, emerging research fronts, entity relationships, knowledge graphs: the kind of intelligence that currently lives only in the heads of domain experts.
 
@@ -130,17 +131,33 @@ The SQL lookup preserves the rank order returned by Qdrant. Results are not re-s
 
 ---
 
-## Running
+## Running Locally
+
+1. Create environment file:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+2. Start the development stack:
 
 ```bash
 docker compose up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| API docs | http://localhost:8000/docs |
+This starts:
 
+| Service  | URL                        |
+| -------- | -------------------------- |
+| Frontend | http://localhost:5173      |
+| API      | http://localhost:8000      |
+| API Docs | http://localhost:8000/docs |
+
+### Background Worker
+
+The Docker Compose stack includes a background worker that continuously embeds newly added papers into Qdrant.
+
+> **Deployment note:** The public demo performs embedding synchronously because Render's free tier does not support background worker services. The project retains a dedicated worker architecture for production deployments.
 ---
 
 ## API
