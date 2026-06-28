@@ -4,6 +4,7 @@ from backend.app.database import SessionLocal, engine, Base
 from backend.app.models import Documents
 from backend.services.vector_store import insert_embedding, get_related, query_documents
 from backend.services.embed import embed_content
+from backend.app.config import FRONTEND_URL
 from sqlalchemy import select,case
 
 Base.metadata.create_all(bind=engine)
@@ -14,9 +15,13 @@ app = FastAPI()
 
 from fastapi.middleware.cors import CORSMiddleware
 
+origins = ["http://localhost:5173"]
+if FRONTEND_URL:
+    origins.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
