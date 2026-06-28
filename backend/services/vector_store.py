@@ -1,14 +1,17 @@
 import logging
+import os
 from typing import cast
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
-
+from backend.app.config import QDRANT_URL, QDRANT_API_KEY, QDRANT_PORT 
 
 logger = logging.getLogger(__name__)
 
+
 client = QdrantClient(
-    host="qdrant",
-    port=6333
+    url=QDRANT_URL,
+    
+    port=QDRANT_PORT
 )
 
 COLLECTION_NAME = "document_vectors"

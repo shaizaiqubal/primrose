@@ -1,8 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker, DeclarativeBase
-import os
-
-DATABASE_URL = os.getenv("DATABASE_URL")
+from backend.app.config import DATABASE_URL
 
 if not DATABASE_URL:
     raise RuntimeError(
