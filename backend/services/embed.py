@@ -1,8 +1,13 @@
+from functools import lru_cache
+
 from sentence_transformers import SentenceTransformer
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
+
+@lru_cache(maxsize=1)
+def get_model() -> SentenceTransformer:
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
 def embed_content(title="", abstract=""):
     content = title + "\n\n" + abstract
-    embedding = model.encode(content)
+    embedding = get_model().encode(content)
     return embedding

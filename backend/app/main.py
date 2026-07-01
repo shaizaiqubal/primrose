@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from backend.app.schemas import Document, DocumentResponse
 from backend.app.database import SessionLocal, engine, Base 
@@ -6,14 +7,15 @@ from backend.services.vector_store import insert_embedding, get_related, query_d
 from backend.services.embed import embed_content
 from backend.app.config import FRONTEND_URL
 from sqlalchemy import select,case
-
-Base.metadata.create_all(bind=engine)
-print("✓ Database tables created successfully")
-
-
-app = FastAPI()
-
 from fastapi.middleware.cors import CORSMiddleware
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    print("✓ Database tables created successfully")
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 origins = ["http://localhost:5173"]
 if FRONTEND_URL:
