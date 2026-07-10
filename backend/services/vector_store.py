@@ -1,9 +1,13 @@
 import logging
-import os
 from typing import cast
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
-from backend.app.config import QDRANT_URL, QDRANT_API_KEY, QDRANT_PORT 
+from qdrant_client.models import Distance, PointIdsList, PointStruct, VectorParams
+from backend.app.config import (
+    QDRANT_API_KEY,
+    QDRANT_COLLECTION_NAME,
+    QDRANT_PORT,
+    QDRANT_URL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -11,10 +15,11 @@ logger = logging.getLogger(__name__)
 client = QdrantClient(
     url=QDRANT_URL,
     port=QDRANT_PORT,
-    api_key=QDRANT_API_KEY
+    api_key=QDRANT_API_KEY,
+    check_compatibility=False
 )
 
-COLLECTION_NAME = "document_vectors"
+COLLECTION_NAME = QDRANT_COLLECTION_NAME
 
 def ensure_collection(vector_size: int = 384):
     try:
@@ -53,7 +58,21 @@ def insert_embedding(result, vector):
         raise RuntimeError("Unable to insert embedding into vector store") from exc
 
 
-def get_related(id):
+def delete_embedding(id):
+    try:
+        ensure_collection()
+        client.delete(
+            collection_name=COLLECTION_NAME,
+            points_selector=PointIdsList(points=[id]),
+            wait=True,
+        )
+        return True
+    except Exception as exc:
+        logger.exception("Failed to delete embedding for document_id=%s", id)
+        raise RuntimeError("Unable to delete embedding from vector store") from exc
+
+
+def get_related_ids(id):
     try:
         ensure_collection()
         points = client.retrieve(

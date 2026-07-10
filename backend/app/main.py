@@ -1,13 +1,23 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
-from backend.app.schemas import Document, DocumentResponse
+from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse, RecommendedPaperResponse
 from backend.app.database import SessionLocal, engine, Base 
 from backend.app.models import Documents
-from backend.services.vector_store import insert_embedding, get_related, query_documents
+from backend.services.vector_store import delete_embedding, insert_embedding
+from backend.services.reranker import RankedDocument
 from backend.services.embed import embed_content
+from backend.services.search import search, get_related, get_document_service
+from backend.services.recommendations import recommendation_engine, RecommendedPaper
 from backend.app.config import FRONTEND_URL
-from sqlalchemy import select,case
+from sqlalchemy import select
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s:%(message)s",
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,7 +37,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 def _get_document_or_404(db, id: int) -> Documents:
     stmt = select(Documents).where(Documents.id == id)
@@ -65,45 +74,29 @@ def get_documents() -> list[Documents]:
         result = list(db.execute(stmt).scalars().all())
         return result
 
-@app.get("/documents/search", response_model=list[DocumentResponse])
-def search_documents(query: str) -> list[Documents]: 
-    query_embed = embed_content(abstract=query)
-    try:
-        related_ids = query_documents(query_embed)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Vector store query failed: {e}"
-        )
-
-    if not related_ids:
-        return []
-    
-    with SessionLocal() as db:
-        
-        order = case(
-            {doc_id: idx for idx, doc_id in enumerate(related_ids)},
-            value=Documents.id
-        )
-        stmt = select(Documents).where(Documents.id.in_(related_ids)).order_by(order)
-        related = list(db.execute(stmt).scalars().all())
-        
-        
-    return related
+@app.get("/documents/search", response_model=list[RankedDocumentResponse])
+def search_documents(query: str) -> list[RankedDocument]: 
+    return search(query)
 
 @app.get('/documents/{id}', response_model=DocumentResponse)
 def get_document(id: int) -> Documents:
-    with SessionLocal() as db:
-        result = _get_document_or_404(db, id)
-        return result
+    return get_document_service(id)
 
 
 @app.delete('/documents/{id}')
 def delete_document(id: int) -> dict:
     with SessionLocal() as db:
         result = _get_document_or_404(db, id)
-        db.delete(result)
-        db.commit()
+        try:
+            delete_embedding(result.id)
+            db.delete(result)
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Delete failed: {e}"
+            )
     return {'message': 'Document deleted successfully'}
 
 @app.put('/documents/{id}', response_model=DocumentResponse)
@@ -138,26 +131,20 @@ def embed_document(id: int) -> dict:
         return {'message': 'Embedded successfully'}
     
 
-@app.get("/documents/{id}/related", response_model=list[DocumentResponse])
-def get_related_documents(id: int) -> list[Documents]:
+@app.get("/documents/{id}/related", response_model=list[RankedDocumentResponse])
+def get_related_documents(id: int) -> list[RankedDocument]:
+    return get_related(id)
+    
+@app.get("/documents/{id}/recommendations", response_model=list[RecommendedPaperResponse])
+def get_recommendations(id: int) -> list[RecommendedPaper]:
     try:
-        related_ids = get_related(id)
-    except Exception as e:
+        query_doc = get_document_service(id)
+        candidates = get_related(id)
+        return recommendation_engine(query_doc, candidates)
+    except HTTPException:
+        raise
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to retrieve related documents: {e}"
-        )
-    
-    if not related_ids:
-        return []
-    with SessionLocal() as db:
-
-        order = case(
-            {doc_id: idx for idx, doc_id in enumerate(related_ids)},
-            value=Documents.id
-        )
-
-        stmt = select(Documents).where(Documents.id.in_(related_ids)).order_by(order)
-        related = list(db.execute(stmt).scalars().all())
-        
-    return related
+            detail=f"Recommendation generation failed: {exc}",
+        ) from exc

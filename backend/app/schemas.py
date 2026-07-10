@@ -21,3 +21,22 @@ class DocumentResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class RankedDocumentResponse(BaseModel):
+    document: DocumentResponse
+    relevance_score: float
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class RecommendedPaperResponse(BaseModel):
+    id: int
+    title: str
+    abstract: str
+    authors: str | None
+    year_published: int | None
+    url: str | None
+
+    relevance_score: float
+    recommendation_note: str
