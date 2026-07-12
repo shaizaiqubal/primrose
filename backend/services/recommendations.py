@@ -5,17 +5,14 @@ from google import genai
 from pydantic import BaseModel, model_validator
 from backend.app.models import Documents
 from backend.services.search import RankedDocument
-from dotenv import load_dotenv
-import os
+from backend.app.config import GEMINI_API_KEY
 
-load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 logger = logging.getLogger(__name__)
 
 try:
-    client = genai.Client()
+    client = genai.Client(api_key=GEMINI_API_KEY)
 except Exception as exc:
     client = None
     logger.exception("Failed to initialize Gemini client: %s", exc)

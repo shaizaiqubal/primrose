@@ -55,12 +55,15 @@ Large departures from the ranking should be rare and well justified, for example
 
 ## Recommendation notes
 
-For every recommended paper, write a concise recommendation note of 2-3 lines explaining:
+For every recommended paper, write a recommendation note at most two concise sentences (roughly 30–60 words).
 
-- why this paper is worth reading;
+The note should explain:
+- why the paper is worth reading;
+- what it adds beyond the previous recommendation.
 - what new understanding it adds after the previous recommendation;
-- why it appears at this point in the sequence.
 
+Avoid repeating the paper's abstract.
+Write for someone deciding whether to click on the paper.o
 The recommendations should feel connected, giving the user a sense of progression without forcing a rigid curriculum.
 
 ## Constraints
