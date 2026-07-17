@@ -2,19 +2,23 @@ from pydantic import BaseModel
 from datetime import datetime
 
 class Document(BaseModel):
+    arxiv_id: str | None = None
     title : str
     abstract : str
     authors: str | None
     year_published: int | None
     url: str | None
+    categories: str | None = None
 
 class DocumentResponse(BaseModel):
     id: int
+    arxiv_id: str | None = None
     title: str
     abstract: str
     authors: str | None
     year_published: int | None
     url: str | None
+    categories: str | None = None
     created_at: datetime
     embedded: bool
 
@@ -32,11 +36,14 @@ class RankedDocumentResponse(BaseModel):
 
 class RecommendedPaperResponse(BaseModel):
     id: int
+    arxiv_id: str | None = None
     title: str
     abstract: str
     authors: str | None
     year_published: int | None
     url: str | None
+    categories: str | None = None
 
     relevance_score: float
+    position: int
     recommendation_note: str

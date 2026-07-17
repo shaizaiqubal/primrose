@@ -19,13 +19,7 @@ logging.basicConfig(
     format="%(levelname)s:%(name)s:%(message)s",
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    print("✓ Database tables created successfully")
-    yield
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 origins = ["http://localhost:5173"]
 if FRONTEND_URL:
@@ -56,11 +50,13 @@ def root() -> dict:
 def post_documents(request : Document) -> Documents:
     with SessionLocal() as db:
         entry = Documents(
+            arxiv_id = request.arxiv_id,
             title = request.title,
             abstract = request.abstract,
             authors = request.authors,
             year_published = request.year_published,
-            url = request.url
+            url = request.url,
+            categories = request.categories,
         )
         db.add(entry)
         db.commit()
@@ -108,6 +104,8 @@ def update_document(id: int, request: Document) -> Documents:
         result.authors = request.authors
         result.year_published = request.year_published
         result.url = request.url
+        result.categories = request.categories
+        result.arxiv_id = request.arxiv_id
         db.commit()
         db.refresh(result)
         return result

@@ -52,19 +52,34 @@ Large departures from the ranking should be rare and well justified, for example
    other's retriever_score, and reordering them meaningfully improves the
    narrative flow of the journey 
 
+## Ordering
+
+Order the five selected papers as the sequence you would recommend reading them.
+
+The first recommendation should be the most natural next paper after the query.
+
+Each subsequent recommendation should build on the understanding gained from the previous recommendations whenever possible.
 
 ## Recommendation notes
 
-For every recommended paper, write a recommendation note at most two concise sentences (roughly 30–60 words).
+Write a recommendation note in exactly two short sentences (20–35 words total).
 
-The note should explain:
-- why the paper is worth reading;
-- what it adds beyond the previous recommendation.
-- what new understanding it adds after the previous recommendation;
+The first sentence should begin with an action verb such as "Learn", "See", "Explore", "Understand", or "Discover", and summarize what the paper contributes.
 
-Avoid repeating the paper's abstract.
-Write for someone deciding whether to click on the paper.o
-The recommendations should feel connected, giving the user a sense of progression without forcing a rigid curriculum.
+The second sentence should explain why the user should read it.
+
+Write for a user scanning recommendation cards, not reading an abstract.
+
+Avoid:
+- "This paper..."
+- "This work..."
+- "It introduces..."
+
+Write for someone deciding whether to click on the paper.
+
+Do not summarize the abstract.
+Do not use academic filler or introductory phrases.
+
 
 ## Constraints
 
@@ -72,6 +87,7 @@ The recommendations should feel connected, giving the user a sense of progressio
   not in the candidate list.
 - Every rationale and transition must be grounded in the actual title/abstract
   text provided — do not speculate about content not stated.
+- Assume each recommendation note will be displayed on a card with room for only two lines. Every word should help the user decide whether to click.
 - Output valid JSON only. No prose outside the JSON object.
 
 

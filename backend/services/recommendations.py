@@ -40,6 +40,7 @@ class RecommendInput(BaseModel):
 
 class RecommendEntry(BaseModel):
     paper_id: int
+    position: int
     recommendation_note: str
 
 
@@ -56,13 +57,16 @@ class RecomendationResponse(BaseModel):
     
 class RecommendedPaper(BaseModel):
     id: int
+    arxiv_id: str | None = None
     title: str
     abstract: str
     authors: str | None
     year_published: int | None
     url: str | None
+    categories: str | None = None
 
     relevance_score: float
+    position: int
     recommendation_note: str
 
 def recommendation_engine(query: Documents, candidates: list[RankedDocument]) -> list[RecommendedPaper]:
@@ -91,7 +95,7 @@ def recommendation_engine(query: Documents, candidates: list[RankedDocument]) ->
 
         start_time = time.perf_counter()
         interaction = client.interactions.create(
-            model="gemini-3.5-flash",
+            model="gemini-3.1-flash-lite",
             input=f"""
                 Below is the current paper and a list of candidate papers.
 
@@ -128,12 +132,15 @@ def recommendation_engine(query: Documents, candidates: list[RankedDocument]) ->
             recommended_papers.append(
                 RecommendedPaper(
                     id=matched_candidate.document.id,
+                    arxiv_id=matched_candidate.document.arxiv_id,
                     title=matched_candidate.document.title,
                     abstract=matched_candidate.document.abstract,
                     authors=matched_candidate.document.authors,
                     year_published=matched_candidate.document.year_published,
                     url=matched_candidate.document.url,
+                    categories=matched_candidate.document.categories,
                     relevance_score=matched_candidate.relevance_score,
+                    position=entry.position,
                     recommendation_note=entry.recommendation_note,
                 )
             )
@@ -143,5 +150,4 @@ def recommendation_engine(query: Documents, candidates: list[RankedDocument]) ->
     except Exception as exc:
         logger.exception("Recommendation generation failed for paper %s: %s", query.id, exc)
         raise
-
 

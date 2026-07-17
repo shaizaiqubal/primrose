@@ -21,6 +21,3 @@ QDRANT_COLLECTION_NAME = os.getenv(
 HF_TOKEN = os.getenv("HF_TOKEN")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-from dotenv import dotenv_values
-print(dotenv_values(REPO_ROOT / ".env").keys())

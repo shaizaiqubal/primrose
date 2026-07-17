@@ -94,7 +94,7 @@ def get_related_ids(id):
         result = client.query_points(
             collection_name=COLLECTION_NAME,
             query=query_vector,
-            limit=10,
+            limit=11,
             with_payload=False,
             with_vectors=False,
         )
