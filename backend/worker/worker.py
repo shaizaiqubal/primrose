@@ -1,4 +1,5 @@
 import logging
+import os
 from backend.app.database import SessionLocal
 from backend.app.models import Documents
 from backend.services.embed import embed_content
@@ -8,6 +9,11 @@ from time import sleep
 
 FAST_SLEEP = 2  # seconds
 SLOW_SLEEP = 30  # seconds
+
+if os.getenv("TESTING") == "1" and os.getenv("ENABLE_WORKER_ON_TEST_DB") != "1":
+    raise RuntimeError(
+        "The worker is disabled in the test environment unless ENABLE_WORKER_ON_TEST_DB=1"
+    )
 
 logging.basicConfig(
     level=logging.INFO, 

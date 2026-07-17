@@ -6,9 +6,12 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       QDRANT_URL: ${QDRANT_URL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
+      init_schema:
+        condition: service_completed_successfully
     volumes:
       - ./backend:/app/backend
 
@@ -33,26 +36,26 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  seed:
+  init_schema:
     build: .
+    command: python -m backend.init_schema
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      QDRANT_URL: ${QDRANT_URL}
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["python", "seed_data.py"]
-    restart: "no"
 
   worker:
     build: .
-    command: ["python","-m","backend.worker.worker"]
+    command: ["python", "-m", "backend.worker.worker"]
     environment:
       DATABASE_URL: ${DATABASE_URL}
       QDRANT_URL: ${QDRANT_URL}
     depends_on:
       postgres:
         condition: service_healthy
+      init_schema:
+        condition: service_completed_successfully
 
   frontend:
     build:

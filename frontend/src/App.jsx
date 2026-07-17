@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react"
-import { getDocuments, getRelated, searchDocuments } from "./api.js"
+import { getDocuments, getRelated, getRecommended, searchDocuments } from "./api.js"
 
 import TopBar from "./components/TopBar.jsx"
 import SearchBar from "./components/SearchBar.jsx"
-import PaperCard from "./components/PaperCard.jsx"
 import ResultsList from "./components/ResultsList.jsx"
 import EmptyState from "./components/EmptyState.jsx"
+import RecommendationPanel from "./components/RecommendationPanel.jsx"
+import { formatDocumentMeta } from "./utils/formatDocumentMeta.js"
 
 import "./App.css"
 // ─── Views ───────────────────────────────────────────────────────────────────
@@ -64,30 +65,72 @@ function HomeView({
   )
 }
 
-function PaperView({ paper, onRelated, related, loadingRelated }) {
+function PaperView({
+  paper,
+  onRelated,
+  onRecommendedTitleClick,
+  related,
+  loadingRelated,
+  recommended,
+  loadingRecommended,
+  unavailable,
+}) {
+  const meta = formatDocumentMeta(paper)
+
   return (
-    <>
+    <div className="paper-view-exploration">
       <div className="paper-view-current">
-        <p className="paper-view-kicker">Selected paper</p>
-        <PaperCard doc={paper} onRelated={onRelated} showRelatedAction={false} />
+        {meta && <p className="paper-view-meta">{meta}</p>}
+        <h2 className="paper-view-title">{paper.title}</h2>
+        <p className="paper-view-abstract">{paper.abstract}</p>
+
+        <div className="paper-view-actions">
+          {paper.url ? (
+            <a
+              className="paper-view-link-btn"
+              href={paper.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View full paper ↗
+            </a>
+          ) : (
+            <button className="paper-view-link-btn" disabled style={{ opacity: 0.3, cursor: "default" }}>
+              No source link
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="paper-view-related">
-        {loadingRelated && <EmptyState message="Finding related papers…" />}
+      <div className="paper-view-columns">
+        <section className="paper-view-column">
+          {loadingRelated && <EmptyState message="Finding related papers…" />}
 
-        {!loadingRelated && related && related.length === 0 && (
-          <EmptyState message="No related papers found." />
-        )}
+          {!loadingRelated && related && related.length === 0 && (
+            <EmptyState message="No related papers found." />
+          )}
 
-        {!loadingRelated && related && related.length > 0 && (
-          <ResultsList
-            docs={related}
-            onRelated={onRelated}
-            label="Related papers"
+          {!loadingRelated && related && related.length > 0 && (
+            <ResultsList
+              docs={related}
+              onRelated={onRelated}
+              label="Related papers"
+              compact
+              onSelect={onRelated}
+            />
+          )}
+        </section>
+
+        <section className="paper-view-column">
+          <RecommendationPanel
+            recommendations={recommended}
+            loading={loadingRecommended}
+            unavailable={unavailable}
+            onTitleClick={onRecommendedTitleClick}
           />
-        )}
+        </section>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -112,12 +155,50 @@ export default function App() {
 
   const [related, setRelated] = useState(null)
   const [loadingRelated, setLoadingRelated] = useState(false)
+  const [recommended, setRecommended] = useState(null)
+  const [loadingRecommended, setLoadingRecommended] = useState(false)
+  const [recommendedUnavailable, setRecommendedUnavailable] = useState(false)
 
   useEffect(() => {
     document.body.classList.remove("theme-dark", "theme-light")
     document.body.classList.add(`theme-${theme}`)
     window.localStorage.setItem("primrose-theme", theme)
   }, [theme])
+
+  const currentPaperId = currentPaper?.id
+
+  useEffect(() => {
+    if (view !== "paper" || !currentPaperId) return
+
+    let cancelled = false
+
+    const loadRecommended = async () => {
+      setLoadingRecommended(true)
+      setRecommended(null)
+      setRecommendedUnavailable(false)
+      try {
+        const docs = await getRecommended(currentPaperId)
+        if (!cancelled) setRecommended(docs)
+      } catch (err) {
+        console.error("Recommendation fetch failed:", err)
+        if (!cancelled) {
+          if (err?.response?.status === 503) {
+            setRecommendedUnavailable(true)
+          } else {
+            setRecommended([])
+          }
+        }
+      } finally {
+        if (!cancelled) setLoadingRecommended(false)
+      }
+    }
+
+    loadRecommended()
+
+    return () => {
+      cancelled = true
+    }
+  }, [view, currentPaperId])
 
   useEffect(() => {
     let cancelled = false
@@ -170,6 +251,9 @@ export default function App() {
     setFuture([])
     setCurrentPaper(doc)
     setRelated(null)
+    setRecommended(null)
+    setLoadingRecommended(false)
+    setRecommendedUnavailable(false)
     setView("paper")
     window.scrollTo(0, 0)
   }, [currentPaper, related])
@@ -202,28 +286,37 @@ export default function App() {
       setHistory((h) => h.slice(0, -1))
       setCurrentPaper(prev.paper)
       setRelated(prev.related)
+      setRecommended(null)
+      setLoadingRecommended(false)
+      setRecommendedUnavailable(false)
       setView("paper")
     } else if (view === "paper") {
       setView("home")
       setCurrentPaper(null)
       setRelated(null)
+      setRecommended(null)
+      setLoadingRecommended(false)
+      setRecommendedUnavailable(false)
     } else if (searchResults !== null) {
       clearSearch()
     }
     window.scrollTo(0, 0)
-  }, [history, future, currentPaper, related, view, searchResults, clearSearch])
+  }, [history, currentPaper, related, view, searchResults, clearSearch])
 
   // ── Forward ──
-  const handleForward = useCallback(() => {
+  const handleForward = () => {
     if (future.length === 0) return
     const next = future[0]
     setHistory((h) => [...h, { paper: currentPaper, related }])
     setFuture((f) => f.slice(1))
     setCurrentPaper(next.paper)
     setRelated(next.related)
+    setRecommended(null)
+    setLoadingRecommended(false)
+    setRecommendedUnavailable(false)
     setView("paper")
     window.scrollTo(0, 0)
-  }, [future, currentPaper, related])
+  }
 
   // ── Go home ──
   const handleHome = useCallback(() => {
@@ -270,8 +363,12 @@ export default function App() {
           <PaperView
             paper={currentPaper}
             onRelated={handleRelated}
+            onRecommendedTitleClick={handleRelated}
             related={related}
             loadingRelated={loadingRelated}
+            recommended={recommended}
+            loadingRecommended={loadingRecommended}
+            unavailable={recommendedUnavailable}
           />
         )}
       </main>

@@ -1,10 +1,10 @@
 # Primrose
 
-> Research intelligence. Starting with discovery.
+> Research intelligence. 
 
 ![Primrose](./assets/hero.png)
 
-![Stage](https://img.shields.io/badge/stage-1%20of%207-rose?style=flat-square)
+![Stage](https://img.shields.io/badge/stage-2%20of%207-rose?style=flat-square)
 ![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.13-blue?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.138-009688?style=flat-square&logo=fastapi&logoColor=white)
@@ -14,18 +14,18 @@
 
 🌸 **Live application:** https://primroses.vercel.app
 
-Primrose is being built toward a single goal: making the hidden structure of scientific literature visible. Connections between ideas, clusters of related work, emerging research fronts, entity relationships, knowledge graphs: the kind of intelligence that currently lives only in the heads of domain experts.
+Primrose is an AI-powered research exploration platform built to make scientific literature easier to navigate.
 
-Stage 1 is the foundation. Semantic search and related-paper discovery, powered by transformer embeddings, deployable in one command.
+It combines semantic retrieval, neural reranking, and LLM-guided recommendations to help researchers discover not only relevant papers, but what to read next. Over time, Primrose will evolve into a research intelligence platform capable of surfacing emerging topics, discovering relationships between ideas, and building an interactive knowledge graph of scientific literature.
 
 ---
 
-## Stages
+## Development Roadmap
 
 | Stage | Status | Capability |
 |-------|--------|------------|
 | 1 | **Complete** | Semantic Discovery Foundation |
-| 2 | Planned | Recommendation Engine |
+| 2 | **Complete** | Recommendation Engine |
 | 3 | Planned | Topic Discovery |
 | 4 | Planned | Entity Extraction |
 | 5 | Planned | Relationship Discovery |
@@ -34,54 +34,67 @@ Stage 1 is the foundation. Semantic search and related-paper discovery, powered 
 
 ---
 
-## Stage 1 -- Semantic Discovery Foundation
+## Features
+### Semantic Discovery
 
-Keyword-based search breaks down at the boundaries of language. Two papers on the same idea can share almost no vocabulary. Primrose embeds papers into a vector space using transformer models, making similarity a matter of meaning rather than surface form.
+Research papers are embedded into a shared vector space using transformer models, allowing Primrose to retrieve conceptually related work even when papers share little vocabulary.
 
-**What Stage 1 delivers:**
+- Semantic search
+- Related paper discovery
+- Transformer embeddings (all-MiniLM-L6-v2)
+- Qdrant vector search
+- PostgreSQL metadata storage
 
-- Semantic search over a seeded corpus of ~500 papers
-- Related paper discovery per document
-- Transformer embeddings via Sentence Transformers (all-MiniLM-L6-v2)
-- Background worker for asynchronous embedding generation
-- PostgreSQL for structured metadata storage
-- Qdrant for vector storage and approximate nearest-neighbor search
-- arXiv links on all documents
-- Docker Compose deployment
+### Reading Journey
 
+Rather than returning only similar papers, Primrose generates a **Reading Journey**: a curated sequence of papers explaining what to read next and why.
+The recommendation engine combines neural retrieval, reranking, and LLM reasoning while respecting the retriever's ranking.
+
+- Cross-Encoder reranking
+- AI-generated Reading Journeys
+- Recommendation notes
+- Educational paper sequencing
 
 ---
  
 
 ## Evaluation
 
-**Dataset:** 10 manually selected query papers
+***Manual evaluation with 7 representative queries:***
 
 | Metric | Score |
 |--------|-------|
-| Precision@5 | 0.86 |
-| MRR | 0.95 |
+| Precision@5 | 0.89 |
+| MRR | 0.93 |
+|nDCG@10| 0.91|
 
-Most queries retrieved highly relevant papers with strong topical alignment. Occasional topic drift occurs at the edges of closely related ML subfields -- expected behavior for a general-purpose embedding model at Stage 1. Retrieval quality will improve in later stages through domain-specific models and a reranking layer.
+Most queries retrieved highly relevant papers with strong topical alignment. However, the pipeline still struggles with broad or emerging research topics when the corpus contains few directly relevant papers, occasionally returning tangential results. Since the reranker can only reorder retrieved candidates, its overall performance is ultimately constrained by the quality and coverage of the initial retrieval stage and the underlying research corpus.
 
 ---
 
 ## Architecture
 
 ```
-            React
-              |
-         FastAPI API
-      +--------+---------+
-      |                  |
- PostgreSQL           Qdrant
- Metadata         Vector Embeddings
-      ^                  ^
-      +------ Worker ----+
-          SentenceTransformer
+                    React
+                      │
+                 FastAPI API
+          ┌───────────┴───────────┐
+          │                       │
+     PostgreSQL               Qdrant
+   Paper Metadata        Vector Embeddings
+          ▲                       ▲
+          └──── Embedding Worker ─┘
+                      │
+          Sentence Transformers
+                      │
+            Cross-Encoder Reranker
+                      │
+          Gemini Recommendation Engine
+                      │
+               Reading Journey
 ```
 
-The worker runs independently of the request cycle, pulling documents from PostgreSQL and writing embeddings to Qdrant. The API coordinates both stores at query time.
+The API orchestrates retrieval while independent services handle embedding generation and recommendation.
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for full dataflow diagrams.
 
@@ -90,21 +103,24 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for full dataflow diagrams.
 ## Retrieval Pipeline
 
 ```
-Query string
-  |
-Embedding model
-  |
-Qdrant ANN search
-  |
-Top-k IDs (ranked by cosine similarity)
-  |
-PostgreSQL metadata lookup
-(order preserved from Qdrant)
-  |
-Ordered results
+Query
+   │
+Sentence Transformer
+   │
+Qdrant ANN Search
+   │
+Top-k Candidates
+   │
+Cross-Encoder Reranker
+   ├──────────────┐
+   │              │
+Related      Recommendation
+ Papers          Engine
+                    │
+            Reading Journey
 ```
 
-The SQL lookup preserves the rank order returned by Qdrant. Results are not re-sorted by any database field -- retrieval order reflects semantic relevance end to end.
+The retriever is responsible for finding relevant papers while the LLM is responsible for educational sequencing and recommendation quality
 
 ---
 
@@ -112,7 +128,7 @@ The SQL lookup preserves the rank order returned by Qdrant. Results are not re-s
 
 **Frontend** -- React, Vite, Axios
 
-**Backend** -- FastAPI, SQLAlchemy, PostgreSQL, Qdrant, Sentence Transformers
+**Backend** -- FastAPI, SQLAlchemy, PostgreSQL, Qdrant, Sentence Transformers, Cross-Encoder, Google Gemini
 
 **Infrastructure** -- Docker, Docker Compose
 
@@ -126,8 +142,7 @@ The SQL lookup preserves the rank order returned by Qdrant. Results are not re-s
 
 **Semantic search over keyword matching.** The same concept appears under dozens of names in the research literature. Embedding-based retrieval captures intent rather than surface terms.
 
-**Pre-embedded corpus.** Documents are seeded and embedded at startup so the application is immediately usable without a cold-start period.
-
+**Hybrid recommendation pipeline.*** Semantic retrieval identifies relevant papers, while Cross-Encoder reranking improves candidate quality. The LLM then converts retrieved papers into a coherent Reading Journey instead of acting as a second retriever.
 
 ---
 
@@ -160,6 +175,44 @@ The Docker Compose stack includes a background worker that continuously embeds n
 > **Deployment note:** The public demo performs embedding synchronously because Render's free tier does not support background worker services. The project retains a dedicated worker architecture for production deployments.
 ---
 
+## Testing
+
+Primrose keeps the development and test stacks separate. The test environment uses its own PostgreSQL container, its own Qdrant container, and a separate Qdrant collection name so the development database and vector store stay untouched.
+
+### Start the test environment
+
+```bash
+docker compose --env-file .env.test -f docker-compose.test.yml up -d --build
+```
+
+This starts:
+
+| Service | Purpose |
+|--------|---------|
+| `test-postgres` | Isolated PostgreSQL database for tests |
+| `test-qdrant` | Isolated Qdrant instance for tests |
+| `api-test` | App container used to run pytest |
+
+### Run pytest
+
+```bash
+docker compose --env-file .env.test -f docker-compose.test.yml exec -T api-test python -m pytest
+```
+
+At test startup, pytest prints the PostgreSQL database and Qdrant collection it is using and refuses to run if they match the development environment.
+
+### Destroy the test environment
+
+```bash
+docker compose --env-file .env.test -f docker-compose.test.yml down -v
+```
+
+The `-v` flag removes the isolated test volumes so the next run starts from a clean slate.
+
+### Worker safety
+
+The background worker will not run in test mode unless `ENABLE_WORKER_ON_TEST_DB=1` is set explicitly. This keeps integration tests from accidentally processing the test database in the background.
+
 ## API
 
 | Method | Endpoint | Description |
@@ -168,6 +221,7 @@ The Docker Compose stack includes a background worker that continuously embeds n
 | GET | /documents/{id} | Retrieve a single document |
 | GET | /documents/search | Semantic search |
 | GET | /documents/{id}/related | Related paper discovery |
+| GET | /documents/{id}/recommendations | Reading Journey |
 | POST | /documents | Ingest a new document |
 | PUT | /documents/{id} | Update document metadata |
 | DELETE | /documents/{id} | Remove a document |
@@ -176,24 +230,25 @@ The Docker Compose stack includes a background worker that continuously embeds n
 
 ---
 
-## Known Limitations (Stage 1)
+## Known Limitations
 
-- General-purpose embedding model; no domain-specific tuning or reranking
-- No user authentication or access control
+- General-purpose embedding model (domain-specific models planned)
+- No user authentication or access control yet
 - Frontend is read-only; corpus management requires direct API access
-- Fixed corpus with no ingestion UI
-- Relevance scores not yet fully surfaced in the frontend
+- Recommendation quality depends on the selected LLM
+- Reading journeys are context-aware rather than user-personalized
+
 
 ---
 
 ## What's Next 
 
-- arXiv ID as a first-class schema field
-- Relevance and similarity scores throughout the pipeline and frontend
 - Domain-specific embedding model (SPECTER2)
 - User authentication and corpus management interface
-- Recommendation engine (Stage 2)
-
+- Topic discovery
+- Topic clustering
+- Citation graph integration
+- Knowledge graph construction
 ---
 
 ## License

@@ -1,143 +1,132 @@
 import { useState } from "react"
+import ChevronToggleButton from "./ChevronToggleButton.jsx"
+import { formatDocumentMeta } from "../utils/formatDocumentMeta.js"
 
 const css = `
   .paper-card {
-    padding: 28px 0;
-    border-top: 1px solid var(--border);
+    padding-block: 1rem;
     border-bottom: 1px solid var(--border);
   }
 
-  .paper-card + .paper-card {
-    border-top: none;
+  .paper-card.compact {
+    padding-block: 1rem;
+  }
+
+  .paper-card:first-child {
+    border-top: 1px solid var(--border);
   }
 
   .paper-card-meta {
-    font-size: 11px;
+    font-size: 0.6875rem;
     letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--muted);
-    margin-bottom: 8px;
+    margin-bottom: 0.375rem;
   }
 
   .paper-card-title {
-    font-family: 'Anvers', 'Work Sans', serif;
-    font-size: 1.2rem;
-    font-weight: normal;
-    line-height: 1.35;
-    color: var(--text);
-    margin-bottom: 14px;
-  }
-
-
-  .paper-card-abstract {
-    font-size: 14px;
-    line-height: 1.75;
-    color: var(--text);
-    opacity: 0.82;
-    margin-bottom: 6px;
-  }
-
-  .paper-card-abstract.clamped {
-    display: -webkit-box;
-    -webkit-line-clamp: 5;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
-    mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 100%);
-  }
-
-  .read-more-btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: block;
     background: none;
     border: none;
     padding: 0;
-    font-family: 'Work Sans', sans-serif;
-    font-size: 13px;
-    color: var(--muted);
+    text-align: left;
+    font-family: 'Anvers', 'Work Sans', serif;
+    font-size: 0.9375rem;
+    font-weight: normal;
+    line-height: 1.35;
+    color: var(--text);
+    margin-bottom: 0;
     cursor: pointer;
-    margin-bottom: 20px;
-    transition: color 0.15s;
-    display: inline-block;
   }
 
-  .read-more-btn:hover {
+  .paper-card-title:hover {
     color: var(--accent);
   }
 
-  .paper-card-actions {
+  .paper-card-header {
     display: flex;
-    gap: 10px;
-    margin-top: 20px;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 0.375rem;
   }
 
-  .card-action-btn {
+  .paper-card.compact .paper-card-header {
+    margin-bottom: 0.25rem;
+  }
+
+  .paper-card.compact .paper-card-meta {
+    margin-bottom: 0.25rem;
+  }
+
+  .paper-card.compact .paper-card-abstract {
+    margin-bottom: 0.875rem;
+  }
+
+  .chevron-toggle-btn {
     background: none;
-    border: 1px solid var(--border);
+    border: none;
+    padding: 0;
     color: var(--muted);
-    font-family: 'Work Sans', sans-serif;
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    padding: 6px 14px;
     cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.1rem;
   }
 
-  .card-action-btn:hover {
+  .chevron-toggle-btn:hover {
     color: var(--accent);
-    border-color: var(--accent);
+  }
+
+  .chevron-toggle-icon {
+    width: 1rem;
+    height: 1rem;
+    stroke-width: 2.2;
+    transition: transform 0.16s ease, color 0.15s ease;
+  }
+
+  .chevron-toggle-icon.expanded {
+    transform: rotate(180deg);
+  }
+
+  .paper-card-abstract {
+    font-size: 0.8125rem;
+    line-height: 1.75;
+    color: var(--text);
+    opacity: 0.82;
+    margin-bottom: 20px;
   }
 `
 
-function formatMeta(doc) {
-  const parts = []
-  if (doc.authors) parts.push(doc.authors)
-  if (doc.year_published) parts.push(doc.year_published)
-  return parts.join(" · ")
-}
-
-export default function PaperCard({ doc, onRelated, showRelatedAction = true }) {
+export default function PaperCard({ doc, onTitleClick, compact = false }) {
   const [expanded, setExpanded] = useState(false)
 
-  const meta = formatMeta(doc)
+  const meta = formatDocumentMeta(doc)
 
   return (
     <>
       <style>{css}</style>
-      <div className="paper-card">
+      <div className={`paper-card ${compact ? "compact" : ""}`}>
         {meta && <p className="paper-card-meta">{meta}</p>}
-        <h2 className="paper-card-title">{doc.title}</h2>
-
-        <p className={`paper-card-abstract ${expanded ? "" : "clamped"}`}>
-          {doc.abstract}
-        </p>
-
-        <button
-          className="read-more-btn"
-          onClick={() => setExpanded((e) => !e)}
-        >
-          {expanded ? "↑ collapse" : "read more ↓"}
-        </button>
-
-        <div className="paper-card-actions">
-          {doc.url ? (
-            <a
-              className="card-action-btn"
-              href={doc.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              View full paper ↗
-            </a>
-          ) : (
-            <button className="card-action-btn" disabled style={{ opacity: 0.3, cursor: "default" }}>
-              No source link
-            </button>
-          )}
-          {showRelatedAction && (
-            <button className="card-action-btn" onClick={() => onRelated(doc)}>
-              Related
-            </button>
-          )}
+        <div className="paper-card-header">
+          <button type="button" className="paper-card-title" onClick={() => onTitleClick?.(doc)}>
+            {doc.title}
+          </button>
+          <ChevronToggleButton
+            expanded={expanded}
+            onClick={() => setExpanded((e) => !e)}
+            ariaLabel={expanded ? "Collapse abstract" : "Expand abstract"}
+          />
         </div>
+
+        {expanded && (
+          <p className="paper-card-abstract">
+            {doc.abstract}
+          </p>
+        )}
       </div>
     </>
   )

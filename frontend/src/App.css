@@ -203,16 +203,107 @@ body {
 
 /* ── Paper view ── */
 
+.paper-view-exploration {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
 .paper-view-current {
   margin-bottom: 20px;
 }
 
-.paper-view-kicker {
+.paper-view-meta {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.paper-view-title {
+  font-family: 'Anvers', 'Work Sans', serif;
+  font-size: 1.5rem;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: 20px;
+  font-weight: normal;
+}
+
+.paper-view-abstract {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--text);
+  opacity: 0.85;
+  margin-bottom: 24px;
+}
+
+.paper-view-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.paper-view-link-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Work Sans', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  border-radius: 0;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.paper-view-link-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.paper-view-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 0;
+  align-items: start;
+  min-width: 0;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.paper-view-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem;
+}
+
+.paper-view-column + .paper-view-column {
+  border-left: 1px solid var(--border);
+}
+
+.paper-view-column:first-child {
+  background: var(--surface);
+}
+
+.paper-view-column > .recommendation-panel {
+  padding: 0;
+  background: transparent;
+  flex: 1;
+}
+
+.paper-view-section-title {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .paper-meta {
@@ -386,4 +477,24 @@ body {
   max-width: 480px;
   color: var(--muted);
   margin-bottom: 40px;
+}
+
+@media (max-width: 900px) {
+  .paper-view-columns {
+    grid-template-columns: 1fr;
+    border: none;
+  }
+
+  .paper-view-column {
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .paper-view-column + .paper-view-column {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+    padding-top: 24px;
+  }
 }

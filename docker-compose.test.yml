@@ -1,0 +1,43 @@
+name: primrose-test
+
+services:
+  test-postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5434:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+
+  test-qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6334:6333"
+    volumes:
+      - test_qdrant_data:/qdrant/storage
+
+  api-test:
+    build: .
+    command: ["sh", "-c", "sleep infinity"]
+    working_dir: /app
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+      test-qdrant:
+        condition: service_started
+    environment:
+      TESTING: "1"
+    volumes:
+      - .:/app
+
+volumes:
+  test_postgres_data:
+  test_qdrant_data:

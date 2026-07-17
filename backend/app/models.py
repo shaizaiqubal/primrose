@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
 from backend.app.database import Base # type: ignore
@@ -11,11 +11,12 @@ class Documents(Base):
     __tablename__ = "documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    arxiv_id: Mapped[str | None] = mapped_column(unique=True, nullable=True)
     title: Mapped[str] = mapped_column()
     abstract: Mapped[str] = mapped_column()
     authors: Mapped[str | None] = mapped_column()
     year_published: Mapped[int | None] = mapped_column()
     url: Mapped[str | None] = mapped_column()
+    categories: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at : Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     embedded : Mapped[bool] = mapped_column(default=False)
-
