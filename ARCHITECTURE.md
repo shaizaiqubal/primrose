@@ -1,63 +1,92 @@
-# Primrose -- Architecture
+# Primrose - Architecture
 
 ## Overview
 
-Primrose uses a dual-store architecture: PostgreSQL holds structured document metadata and Qdrant holds vector embeddings. These two stores are kept separate by design and coordinated at query time by the FastAPI layer. A background worker handles embedding generation independently of the request cycle.
+Primrose uses two specialized stores and a FastAPI orchestration layer:
+
+- PostgreSQL stores document metadata and ingestion state.
+- Qdrant stores document embeddings and powers approximate nearest-neighbor retrieval.
+- FastAPI coordinates semantic search, related-paper discovery, and recommendation generation.
+
+Embedding generation is handled out of band by a background worker. Recommendation generation is handled separately through a reranking plus LLM pipeline.
 
 ---
 
 ## Component Map
 
-```
+```text
 primrose/
   backend/
     app/
-      main.py          -- FastAPI app, route definitions
-      models.py        -- SQLAlchemy ORM models
-      schemas.py       -- Pydantic request/response schemas
-      database.py      -- DB session and engine setup
-      services/
-        embed.py       -- Embedding logic (SentenceTransformer)
-        vector_store.py -- Qdrant client wrapper
-      worker/
-        worker.py      -- Background embedding worker
+      main.py           -- FastAPI routes and orchestration
+      config.py         -- Environment and service configuration
+      database.py       -- SQLAlchemy engine and session setup
+      models.py         -- PostgreSQL ORM models
+      schemas.py        -- API request/response models
+    corpus/
+      arxiv_client.py   -- arXiv API client
+      downloader.py     -- Corpus ingestion script
+    services/
+      embed.py          -- SentenceTransformer embedding helper
+      reranker.py       -- Cross-encoder reranking
+      search.py         -- Semantic search and related-paper lookup
+      vector_store.py   -- Qdrant client wrapper
+      recommendations.py -- Gemini-based reading journey generation
+    worker/
+      worker.py         -- Polling embedding worker
   frontend/
     src/
-      App.jsx          -- Root component and routing
-      api.js           -- Axios API client
-      components/      -- UI components
-    public/fonts/      -- Anvers typeface
-  seed_data.py         -- Corpus ingestion script
-  primrose_seed_data.json -- Seed corpus (~500 papers)
-  docker-compose.yaml  -- Service orchestration
+      App.jsx           -- Root UI
+      api.js            -- API client
+      components/       -- Search, result, and recommendation UI
+  docker-compose.yaml   -- Local service orchestration
 ```
 
 ---
 
 ## Services
 
-| Service   | Image          | Port  | Role                              |
-|-----------|----------------|-------|-----------------------------------|
-| db        | postgres:15    | 5432  | Document metadata storage         |
-| qdrant    | qdrant/qdrant  | 6333  | Vector storage and ANN search     |
-| backend   | (built)        | 8000  | FastAPI API + embedding worker    |
-| frontend  | (built)        | 5173  | React UI via Vite                 |
+| Service | Image | Role |
+| --- | --- | --- |
+| `postgres` | `postgres:17` | Persistent document metadata store |
+| `qdrant` | `qdrant/qdrant:latest` | Vector database for embeddings |
+| `init_schema` | built from repo | One-shot database schema bootstrap |
+| `worker` | built from repo | Polls for unembedded documents and writes vectors to Qdrant |
+| `api` | built from repo | FastAPI application and orchestration layer |
+| `frontend` | built from `./frontend` | React UI |
+
+The Docker Compose stack brings up the schema initializer before the API and worker start. That keeps the database creation step separate from the runtime containers.
 
 ---
 
-## Dataflow
+## Data Model
 
-### Ingestion
+The core document record lives in PostgreSQL and includes:
 
-```
-primrose_seed_data.json
-        |
-   seed_data.py
-        |
+- `id`
+- `arxiv_id`
+- `title`
+- `abstract`
+- `authors`
+- `year_published`
+- `url`
+- `categories`
+- `created_at`
+- `embedded`
+
+The `embedded` flag is the coordination signal between PostgreSQL and Qdrant. A document can exist in the metadata store before its vector has been generated and written.
+
+Qdrant points are stored with the document ID as the point ID and a payload containing lightweight metadata such as `document_id`, `year_published`, and `authors`.
+
+---
+
+## Ingestion
+
+```text
+
      [POST /documents]
         |
         +-----> PostgreSQL
-        |       stores: title, abstract, authors, arxiv_url, id
         |
         +-----> worker.py (background)
                     |
@@ -69,94 +98,144 @@ primrose_seed_data.json
              vector_store.py
                     |
                  Qdrant
-                 stores: vector, document_id
+                 
 ```
 
 The worker polls for documents that have been stored in PostgreSQL but not yet embedded. Embedding is decoupled from ingestion so the API never blocks on model inference.
 
----
-
-### Semantic Search
-
-```
-User query (string)
-        |
-     React (App.jsx / api.js)
-        |
-  GET /documents/search?q=...
-        |
-     main.py (FastAPI)
-        |
-     embed.py
-     (query -> vector)
-        |
-  vector_store.py
-  (Qdrant ANN search -> top-k IDs, ranked by cosine similarity)
-        |
-  PostgreSQL
-  (fetch metadata for top-k IDs, ordered to match Qdrant ranking)
-        |
-  JSON response (ordered results)
-        |
-     React
-     (renders results with relevance scores)
-```
-
-The SQL fetch preserves the rank order returned by Qdrant. Results are not re-sorted by any database field, so retrieval order reflects semantic similarity end to end.
+The API also exposes `POST /documents/{id}/embed` for manually embedding a specific document when needed.
 
 ---
 
-### Related Paper Discovery
+## Semantic Search
 
+```text
+User query
+   |
+frontend
+   |
+GET /documents/search?q=...
+   |
+main.py
+   |
+embed.py
+   |
+vector_store.py
+   |
+Qdrant ANN search
+   |
+PostgreSQL metadata lookup
+   |
+reranker.py
+   |
+JSON response
 ```
+
+Search works in two phases:
+
+1. The query text is embedded with `SentenceTransformer("all-MiniLM-L6-v2")`.
+2. Qdrant returns the nearest document IDs, which are then hydrated from PostgreSQL and reranked with the cross-encoder.
+
+The retrieval order from Qdrant is preserved through the metadata lookup so the reranker always receives candidates in the intended semantic order.
+
+---
+
+## Related Papers
+
+```text
 Document ID
-        |
-  GET /documents/{id}/related
-        |
-     main.py
-        |
-  vector_store.py
-  (fetch stored vector for document_id)
-        |
-  Qdrant ANN search
-  (vector -> top-k similar IDs, excluding self)
-        |
-  PostgreSQL
-  (metadata lookup, Qdrant order preserved)
-        |
-  JSON response
-        |
-     React
+   |
+GET /documents/{id}/related
+   |
+main.py
+   |
+search.py
+   |
+Qdrant retrieve stored vector
+   |
+Qdrant ANN search
+   |
+PostgreSQL metadata lookup
+   |
+reranker.py
+   |
+JSON response
 ```
 
-Related paper discovery reuses the same pipeline as search. The only difference is the query vector: instead of embedding a user string, it uses the pre-stored vector for the requested document.
+Related-paper discovery reuses the same retrieval stack as search, but the query vector comes from the stored embedding for the requested document instead of from user input.
 
 ---
 
-## Embedding Pipeline Detail
+## Recommendations
 
+```text
+Document ID
+   |
+GET /documents/{id}/recommendations
+   |
+main.py
+   |
+search.py -> related candidates
+   |
+reranker.py
+   |
+recommendations.py
+   |
+Gemini API
+   |
+Reading Journey response
 ```
-Input: title + abstract (concatenated string)
-        |
-SentenceTransformer
-(all-MiniLM-L6-v2, default Stage 1)
-        |
-384-dimensional float vector
-        |
+
+The recommendation endpoint builds on the related-paper pipeline:
+
+- `search.py` collects a candidate set.
+- `reranker.py` scores the candidates for relevance.
+- `recommendations.py` sends the query paper plus candidates to Gemini.
+- The model returns a structured five-step reading journey with notes and positions.
+
+This design keeps retrieval and sequencing separate. The retriever finds relevant papers; the LLM explains what to read next and why.
+
+---
+
+## Embedding Pipeline
+
+```text
+title + abstract
+   |
+embed.py
+   |
+all-MiniLM-L6-v2
+   |
+384-dimensional vector
+   |
+vector_store.py
+   |
 Qdrant upsert
-(collection: "papers", payload: {document_id})
 ```
 
-The model encodes title and abstract together as a single string. This gives the embedding access to both the topic signal in the title and the methodological detail in the abstract.
+The embedding input is the title and abstract concatenated with a blank line between them. That gives the model both the concise topic signal in the title and the detailed context in the abstract.
+
+Qdrant is configured with cosine distance and a vector size of 384 to match the SentenceTransformer output.
 
 ---
 
 ## Key Design Decisions
 
-**Why two stores?** PostgreSQL handles relational queries, filtering, and structured retrieval efficiently. Qdrant handles approximate nearest-neighbor search at scale with built-in HNSW indexing. Using one store for both would mean either slow vector search in a general-purpose database or losing relational query capability in a vector store.
+**Why PostgreSQL and Qdrant?** PostgreSQL is the system of record for structured paper metadata. Qdrant is optimized for nearest-neighbor search. Splitting them keeps each store focused on the job it does best.
 
-**Why a background worker?** Transformer inference is not fast enough to run inline with a write request at any meaningful scale. The worker decouples ingestion throughput from embedding latency. Documents are available for metadata queries immediately after ingestion; they become searchable once the worker embeds them.
+**Why a background worker?** Embedding is slower than ordinary request handling, so the worker keeps request latency low and lets ingestion remain responsive.
 
-**Why pre-seed the corpus?** A cold-start system with no documents returns no results and demonstrates nothing. Seeding ~500 papers at startup makes the application immediately usable and lets the retrieval quality be evaluated from the first request.
+**Why keep an explicit `embedded` flag?** The flag makes the data flow observable and allows the worker to resume interrupted ingestion without duplicating work.
 
-**Why preserve Qdrant ranking in the SQL lookup?** PostgreSQL does not guarantee row return order without an explicit ORDER BY. If the metadata fetch re-sorted results by, say, ingestion date or title, the semantic ranking from Qdrant would be silently discarded. The ordering step is explicit and intentional.
+**Why rerank after ANN search?** Qdrant is good at candidate generation, while the cross-encoder is better at fine-grained relevance ordering. Using both improves result quality without forcing the vector store to do everything.
+
+**Why a separate recommendation step?** Recommendations are not just "more similar papers". The Gemini step turns ranked candidates into an ordered reading path with short explanations.
+
+---
+
+## Operational Notes
+
+- `backend/init_schema.py` creates the database tables at startup.
+- `backend/worker/worker.py` skips test mode unless `ENABLE_WORKER_ON_TEST_DB=1` is set.
+
+
