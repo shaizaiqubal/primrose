@@ -58,9 +58,10 @@ def test_recommendations_returns_five_papers(client, monkeypatch):
                         "recommended": [
                             {
                                 "paper_id": paper_id,
+                                "position": index + 1,
                                 "recommendation_note": f"Why paper {paper_id} matters",
                             }
-                            for paper_id in candidate_ids
+                            for index, paper_id in enumerate(candidate_ids)
                         ]
                     }
                 )
@@ -90,3 +91,4 @@ def test_recommendations_returns_five_papers(client, monkeypatch):
     data = response.json()
     assert len(data) == 5
     assert all("recommendation_note" in item for item in data)
+    assert [item["position"] for item in data] == [1, 2, 3, 4, 5]
