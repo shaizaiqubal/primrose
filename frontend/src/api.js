@@ -18,7 +18,7 @@ export const getDocument = async (id) => {
 
 export const getRelated = async (id) => {
   const response = await api.get(`/documents/${id}/related`)
-  return response.data
+  return response.data.map(r => ({ ...r.document, relevance_score: r.relevance_score }))
 }
 
 export const searchDocuments = async (query) => {
@@ -28,6 +28,12 @@ export const searchDocuments = async (query) => {
       params: { query }
     }
   )
+  console.log("raw related response:", response.data)
 
+  return response.data.map(r => ({ ...r.document, relevance_score: r.relevance_score }))
+}
+
+export const getRecommended = async (id) => {
+  const response = await api.get(`/documents/${id}/recommendations`)
   return response.data
 }
