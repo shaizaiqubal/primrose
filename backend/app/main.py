@@ -66,7 +66,7 @@ def post_documents(request : Document) -> Documents:
 @app.get('/documents', response_model=list[DocumentResponse])
 def get_documents() -> list[Documents]:
     with SessionLocal() as db:
-        stmt = select(Documents)
+        stmt = select(Documents).order_by(Documents.id).limit(50)
         result = list(db.execute(stmt).scalars().all())
         return result
 
