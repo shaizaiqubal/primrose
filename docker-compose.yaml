@@ -45,18 +45,6 @@ services:
       postgres:
         condition: service_healthy
 
-  worker:
-    build: .
-    command: ["python", "-m", "backend.worker.worker"]
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      QDRANT_URL: ${QDRANT_URL}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      init_schema:
-        condition: service_completed_successfully
-
   frontend:
     build:
       context: ./frontend

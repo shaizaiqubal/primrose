@@ -1,13 +1,14 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse, RecommendedPaperResponse
-from backend.app.database import SessionLocal, engine, Base 
+from backend.app.database import SessionLocal
 from backend.app.models import Documents
 from backend.services.vector_store import delete_embedding, insert_embedding
 from backend.services.reranker import RankedDocument
 from backend.services.embed import embed_content
 from backend.services.search import search, get_related, get_document_service
 from backend.services.recommendations import recommendation_engine, RecommendedPaper
+from backend.services.queue_docs import queue_documents
 from backend.app.config import FRONTEND_URL
 from sqlalchemy import select
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,7 +62,11 @@ def post_documents(request : Document) -> Documents:
         db.add(entry)
         db.commit()
         db.refresh(entry)
-        return entry
+        db.close()
+
+    id = queue_documents(entry)
+    logging.info(f"Published message {id}")
+    return entry
 
 @app.get('/documents', response_model=list[DocumentResponse])
 def get_documents() -> list[Documents]:
@@ -77,7 +82,6 @@ def search_documents(query: str) -> list[RankedDocument]:
 @app.get('/documents/{id}', response_model=DocumentResponse)
 def get_document(id: int) -> Documents:
     return get_document_service(id)
-
 
 @app.delete('/documents/{id}')
 def delete_document(id: int) -> dict:

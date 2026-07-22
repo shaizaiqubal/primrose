@@ -1,0 +1,15 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# sentence-transformers needs torch; install the CPU wheel first to keep the image lean.
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch
+
+COPY requirements.worker.txt /app/
+RUN pip install --no-cache-dir -r requirements.worker.txt
+
+COPY backend ./backend
+
+CMD ["sh", "-c", "python -m uvicorn backend.services.worker:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -16,3 +16,4 @@ httpx==0.28.1
 
 google-auth==2.55.2
 google-genai==2.11.0
+google-cloud-pubsub
