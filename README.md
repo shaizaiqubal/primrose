@@ -11,6 +11,7 @@
 ![React](https://img.shields.io/badge/React-19.2.7-61DAFB?style=flat-square&logo=react&logoColor=black)
 ![Docker](https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey?style=flat-square)
+![Tests](https://github.com/shaizaiqubal/primrose/actions/workflows/tests.yaml/badge.svg?)
 
 🌸 **Live application:** https://primroses.vercel.app
 
@@ -138,7 +139,7 @@ The retriever is responsible for finding relevant papers while the LLM is respon
 
 **Separate stores for metadata and vectors.** PostgreSQL handles structured metadata; Qdrant handles approximate nearest-neighbor search with HNSW indexing. Each store is used for what it does well.
 
-**Background embedding worker.** Embedding generation does not block the request cycle. Documents are available for metadata queries immediately after ingestion and become searchable once the worker processes them.
+**Asynchronous embedding worker.** Embedding generation does not block the request cycle. Documents are available for metadata queries immediately after ingestion and become searchable once the worker processes them.
 
 **Semantic search over keyword matching.** The same concept appears under dozens of names in the research literature. Embedding-based retrieval captures intent rather than surface terms.
 
@@ -168,11 +169,6 @@ This starts:
 | API      | http://localhost:8000      |
 | API Docs | http://localhost:8000/docs |
 
-### Background Worker
-
-The Docker Compose stack includes a background worker that continuously embeds newly added papers into Qdrant.
-
-> **Deployment note:** The public demo performs embedding synchronously because Render's free tier does not support background worker services. The project retains a dedicated worker architecture for production deployments.
 ---
 
 ## Testing
@@ -209,9 +205,6 @@ docker compose --env-file .env.test -f docker-compose.test.yml down -v
 
 The `-v` flag removes the isolated test volumes so the next run starts from a clean slate.
 
-### Worker safety
-
-The background worker will not run in test mode unless `ENABLE_WORKER_ON_TEST_DB=1` is set explicitly. This keeps integration tests from accidentally processing the test database in the background.
 
 ## API
 

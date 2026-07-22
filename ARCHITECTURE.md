@@ -8,7 +8,7 @@ Primrose uses two specialized stores and a FastAPI orchestration layer:
 - Qdrant stores document embeddings and powers approximate nearest-neighbor retrieval.
 - FastAPI coordinates semantic search, related-paper discovery, and recommendation generation.
 
-Embedding generation is handled out of band by a background worker. Recommendation generation is handled separately through a reranking plus LLM pipeline.
+Embedding generation is handled by an asynchronous background worker. Recommendation generation is handled separately through a reranking plus LLM pipeline.
 
 ---
 
@@ -32,8 +32,9 @@ primrose/
       search.py         -- Semantic search and related-paper lookup
       vector_store.py   -- Qdrant client wrapper
       recommendations.py -- Gemini-based reading journey generation
-    worker/
-      worker.py         -- Polling embedding worker
+      queue_docs.py     -- 
+      worker.py         -- Pub/Sub-triggered embedding worker
+
   frontend/
     src/
       App.jsx           -- Root UI
@@ -51,7 +52,7 @@ primrose/
 | `postgres` | `postgres:17` | Persistent document metadata store |
 | `qdrant` | `qdrant/qdrant:latest` | Vector database for embeddings |
 | `init_schema` | built from repo | One-shot database schema bootstrap |
-| `worker` | built from repo | Polls for unembedded documents and writes vectors to Qdrant |
+| `worker` | built from repo | Processes embedding jobs delivered through Google Cloud Pub/Sub and writes vectors to Qdrant|
 | `api` | built from repo | FastAPI application and orchestration layer |
 | `frontend` | built from `./frontend` | React UI |
 
@@ -84,24 +85,36 @@ Qdrant points are stored with the document ID as the point ID and a payload cont
 
 ```text
 
-     [POST /documents]
-        |
-        +-----> PostgreSQL
-        |
-        +-----> worker.py (background)
-                    |
-               embed.py
-                    |
-          SentenceTransformer
-          (title + abstract -> vector)
-                    |
-             vector_store.py
-                    |
-                 Qdrant
+            [POST /documents]
+                   |
+                   v
+              PostgreSQL
+                   |
+                   v
+          Publish document ID
+              to Pub/Sub
+                   |
+                   v
+        Cloud Run Worker (Push)
+                   |
+                   v
+              embed.py
+                   |
+        SentenceTransformer
+       (title + abstract → vector)
+                   |
+                   v
+          vector_store.py
+                   |
+                   v
+                Qdrant
+                   |
+                   v
+      PostgreSQL (embedded = true)
                  
 ```
 
-The worker polls for documents that have been stored in PostgreSQL but not yet embedded. Embedding is decoupled from ingestion so the API never blocks on model inference.
+After a document is stored in PostgreSQL, the API publishes its document ID to a Google Cloud Pub/Sub topic. A dedicated Cloud Run worker receives the message, generates the embedding using SentenceTransformer, writes the vector to Qdrant, and marks the document as embedded in PostgreSQL. This asynchronous pipeline keeps document ingestion responsive while allowing embedding to scale independently of the API.
 
 The API also exposes `POST /documents/{id}/embed` for manually embedding a specific document when needed.
 
@@ -223,7 +236,7 @@ Qdrant is configured with cosine distance and a vector size of 384 to match the 
 
 **Why PostgreSQL and Qdrant?** PostgreSQL is the system of record for structured paper metadata. Qdrant is optimized for nearest-neighbor search. Splitting them keeps each store focused on the job it does best.
 
-**Why a background worker?** Embedding is slower than ordinary request handling, so the worker keeps request latency low and lets ingestion remain responsive.
+**Why an asynchronous Pub/Sub worker?** Embedding generation is significantly slower than ordinary request handling. Rather than blocking API requests, the API publishes an embedding job to Google Cloud Pub/Sub. A dedicated Cloud Run worker processes the job independently, allowing ingestion to remain responsive while enabling automatic retries, independent scaling, and reliable background processing.
 
 **Why keep an explicit `embedded` flag?** The flag makes the data flow observable and allows the worker to resume interrupted ingestion without duplicating work.
 
@@ -236,6 +249,5 @@ Qdrant is configured with cosine distance and a vector size of 384 to match the 
 ## Operational Notes
 
 - `backend/init_schema.py` creates the database tables at startup.
-- `backend/worker/worker.py` skips test mode unless `ENABLE_WORKER_ON_TEST_DB=1` is set.
 
 

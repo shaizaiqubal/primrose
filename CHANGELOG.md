@@ -34,3 +34,4 @@ All notable changes to Primrose are documented here.
 - Refactored the retrieval pipeline into retrieval, reranking, and recommendation stages
 - Expanded testing infrastructure with isolated databases and vector stores
 - Updated the architecture to support scalable AI-assisted research exploration
+- Replaced the polling embedding worker with an event-driven Google Cloud Pub/Sub pipeline.
