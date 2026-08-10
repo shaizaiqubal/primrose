@@ -50,6 +50,23 @@ const css = `
     align-items: center;
   }
 
+  .topbar-link {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: color 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .topbar-link:hover:not(:disabled),
+  .topbar-link.active {
+    color: var(--text);
+  }
+
   .topbar-right {
     display: flex;
     align-items: center;
@@ -103,7 +120,17 @@ const css = `
   }
 `
 
-export default function TopBar({ onHome, onBack, onForward, canBack, canForward, theme, onToggleTheme }) {
+export default function TopBar({
+  onHome,
+  onTopics,
+  onBack,
+  onForward,
+  canBack,
+  canForward,
+  theme,
+  onToggleTheme,
+  topicsActive = false,
+}) {
   return (
     <>
       <style>{css}</style>
@@ -114,6 +141,13 @@ export default function TopBar({ onHome, onBack, onForward, canBack, canForward,
           </button>
           <button className="nav-btn" onClick={onForward} disabled={!canForward}>
             →
+          </button>
+          <button
+            type="button"
+            className={`topbar-link ${topicsActive ? "active" : ""}`}
+            onClick={onTopics}
+          >
+            Topics
           </button>
         </nav>
         <button className="wordmark" onClick={onHome}>

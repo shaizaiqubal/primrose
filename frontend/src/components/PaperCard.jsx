@@ -9,7 +9,7 @@ const css = `
   }
 
   .paper-card.compact {
-    padding-block: 1rem;
+    padding-block: 0.75rem;
   }
 
   .paper-card:first-child {
@@ -53,15 +53,15 @@ const css = `
   }
 
   .paper-card.compact .paper-card-header {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
   }
 
   .paper-card.compact .paper-card-meta {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
   }
 
   .paper-card.compact .paper-card-abstract {
-    margin-bottom: 0.875rem;
+    margin-bottom: 0.75rem;
   }
 
   .chevron-toggle-btn {

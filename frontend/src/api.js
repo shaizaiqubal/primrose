@@ -11,6 +11,21 @@ export const getDocuments = async () => {
   return response.data
 }
 
+export const getTopics = async () => {
+  const response = await api.get("/topics")
+  return response.data
+}
+
+export const getTopic = async (topicId) => {
+  const response = await api.get(`/topics/${topicId}`)
+  return response.data
+}
+
+export const getTopicPapers = async (topicId) => {
+  const response = await api.get(`/topics/${topicId}/papers`)
+  return response.data
+}
+
 export const getDocument = async (id) => {
   const response = await api.get(`/documents/${id}`)
   return response.data

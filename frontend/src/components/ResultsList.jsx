@@ -15,6 +15,7 @@ export default function ResultsList({ docs, onRelated, label, compact = false, o
   if (!docs || docs.length === 0) return null
 
   const heading = label ?? `${docs.length} result${docs.length !== 1 ? "s" : ""}`
+  const handleSelect = onSelect ?? onRelated
 
   return (
       <>
@@ -24,7 +25,7 @@ export default function ResultsList({ docs, onRelated, label, compact = false, o
         <PaperCard
           key={doc.id}
           doc={doc}
-          onTitleClick={compact ? onSelect : onRelated}
+          onTitleClick={handleSelect}
           compact={compact}
         />
       ))}
