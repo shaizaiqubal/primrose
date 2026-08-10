@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
-from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse, RecommendedPaperResponse
+from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse, RecommendedPaperResponse, TopicResponse
 from backend.app.database import SessionLocal
-from backend.app.models import Documents
+from backend.app.models import Documents,Topics,Document_Topics
 from backend.services.vector_store import delete_embedding, insert_embedding
 from backend.services.reranker import RankedDocument
 from backend.services.embed import embed_content
@@ -74,6 +74,42 @@ def get_documents() -> list[Documents]:
         stmt = select(Documents).order_by(Documents.id).limit(50)
         result = list(db.execute(stmt).scalars().all())
         return result
+
+@app.get('/topics', response_model= list[TopicResponse])
+def get_topics():
+    with SessionLocal() as db:
+        stmt = select(Topics).order_by(Topics.paper_count.desc())
+        result = db.execute(stmt).scalars().all()
+    return result
+
+@app.get('/topics/{topic_id}', response_model=TopicResponse)
+def get_topic(topic_id: int):
+    with SessionLocal() as db:
+            stmt = select(Topics).where(Topics.cluster_id==topic_id)
+            result = db.execute(stmt).scalar_one_or_none()
+
+    if result is None:
+        raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Topic not found"
+                )
+
+    return result
+
+@app.get('/topics/{topic_id}/papers', response_model=list[DocumentResponse])
+def get_topic_papers(topic_id: int) -> list[Documents]:
+    with SessionLocal() as db:
+        stmt = (select(Documents)
+            .join(Document_Topics, Documents.id == Document_Topics.id)
+            .where(Document_Topics.cluster_id == topic_id))
+        result = db.execute(stmt).scalars().all()
+        if result is None:
+            raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Topic is empty"
+                )
+    return list(result)
+
 
 @app.get("/documents/search", response_model=list[RankedDocumentResponse])
 def search_documents(query: str) -> list[RankedDocument]: 

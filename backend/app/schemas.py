@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 class Document(BaseModel):
@@ -47,3 +47,13 @@ class RecommendedPaperResponse(BaseModel):
     relevance_score: float
     position: int
     recommendation_note: str
+
+class TopicResponse(BaseModel):
+    topic_id: int = Field(validation_alias="cluster_id")
+    topic_name: str | None = Field(validation_alias="cluster_name")
+    paper_count: int
+
+
+    model_config = {
+            "from_attributes": True
+        }
