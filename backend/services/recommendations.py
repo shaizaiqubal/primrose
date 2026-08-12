@@ -1,13 +1,15 @@
 import logging
 import time
+import redis
+import json
 from pathlib import Path
+from fastapi.encoders import jsonable_encoder
 from google import genai
 from pydantic import BaseModel, model_validator
 from backend.app.models import Documents
 from backend.services.search import RankedDocument
 from backend.app.config import GEMINI_API_KEY
-
-
+from backend.app.cache import cache, TTL
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,7 @@ class QueryPaper(BaseModel):
     paper_id: int
     title: str
     abstract: str
+
 
 class Candidate(BaseModel):
     paper_id: int
@@ -54,6 +57,7 @@ class RecomendationResponse(BaseModel):
         if len({e.paper_id for e in self.recommended}) != 5:
             raise ValueError("Duplicate paper_id in journey.")
         return self
+
     
 class RecommendedPaper(BaseModel):
     id: int
@@ -69,7 +73,22 @@ class RecommendedPaper(BaseModel):
     position: int
     recommendation_note: str
 
+
 def recommendation_engine(query: Documents, candidates: list[RankedDocument]) -> list[RecommendedPaper]:
+
+    key = "recommend:"+str(query.id)
+    try:
+        payload = cache.get(key)
+    except redis.RedisError as exc:
+            payload = None
+            logger.warning("Redis cache unavailable for id %s: %s", query.id, exc)
+    if payload:
+        logger.info("Cache hit for key %s", key)
+        cached_papers = jsonable_encoder(json.loads(payload))
+        return [RecommendedPaper.model_validate(item) for item in cached_papers]
+
+    logger.info("Cache miss for key %s", key)
+
     logger.info("Starting recommendation generation for paper %s", query.id)
 
     try:
@@ -145,9 +164,12 @@ def recommendation_engine(query: Documents, candidates: list[RankedDocument]) ->
                 )
             )
 
+        payload = json.dumps(jsonable_encoder(recommended_papers))
+        cache.set(key, payload, ex=TTL)
+        logger.info("Cached recommendations for key %s (ttl=%s)", key, TTL)
+
         return recommended_papers
 
     except Exception as exc:
         logger.exception("Recommendation generation failed for paper %s: %s", query.id, exc)
         raise
-

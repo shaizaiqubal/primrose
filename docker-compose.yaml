@@ -53,7 +53,15 @@ services:
       - frontend_node_modules:/app/frontend/node_modules
     depends_on:
       - api
+
+  cache:
+    image: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - cache_data:/data
 volumes:
   postgres_data:
   qdrant_data:
   frontend_node_modules:
+  cache_data:

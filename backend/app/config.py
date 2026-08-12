@@ -17,7 +17,10 @@ QDRANT_COLLECTION_NAME = os.getenv(
     "QDRANT_COLLECTION_NAME",
     "document_vectors",
 )
-
 HF_TOKEN = os.getenv("HF_TOKEN")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+REDIS_HOST=os.getenv("REDIS_HOST", "cache")
+REDIS_PORT=int(os.getenv("REDIS_PORT", 6379))
+REDIS_USER=os.getenv("REDIS_USER")
+REDIS_PASSWORD=os.getenv("REDIS_PASSWORD")
