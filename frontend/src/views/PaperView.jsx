@@ -19,7 +19,7 @@ export default function PaperView({
     loadingRelated,
     recommended,
     loadingRecommended,
-    recommendedUnavailable,
+    recommendedError,
     fetchRelated,
   } = usePaperDetail(paper)
 
@@ -88,7 +88,7 @@ export default function PaperView({
           <RecommendationPanel
             recommendations={recommended}
             loading={loadingRecommended}
-            unavailable={recommendedUnavailable}
+            error={recommendedError}
             onTitleClick={onPaperSelect}
           />
         </section>

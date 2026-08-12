@@ -6,7 +6,7 @@ export default function usePaperDetail(paper) {
   const [loadingRelated, setLoadingRelated] = useState(false)
   const [recommended, setRecommended] = useState(null)
   const [loadingRecommended, setLoadingRecommended] = useState(false)
-  const [recommendedUnavailable, setRecommendedUnavailable] = useState(false)
+  const [recommendedError, setRecommendedError] = useState("")
   const paperId = paper?.id ?? null
 
   const fetchRelated = useCallback(async () => {
@@ -33,18 +33,15 @@ export default function usePaperDetail(paper) {
 
       setLoadingRecommended(true)
       setRecommended(null)
-      setRecommendedUnavailable(false)
+      setRecommendedError("")
       try {
         const docs = await getRecommended(paperId)
         if (!cancelled) setRecommended(docs)
       } catch (err) {
         console.error("Recommendation fetch failed:", err)
         if (!cancelled) {
-          if (err?.response?.status === 503) {
-            setRecommendedUnavailable(true)
-          } else {
-            setRecommended([])
-          }
+          setRecommended([])
+          setRecommendedError("Recommendations could not be loaded.")
         }
       } finally {
         if (!cancelled) setLoadingRecommended(false)
@@ -63,7 +60,7 @@ export default function usePaperDetail(paper) {
     loadingRelated,
     recommended,
     loadingRecommended,
-    recommendedUnavailable,
+    recommendedError,
     fetchRelated,
   }
 }

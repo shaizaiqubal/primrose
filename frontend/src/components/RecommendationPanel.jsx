@@ -172,7 +172,7 @@ const css = `
   }
 `
 
-export default function RecommendationPanel({ recommendations, loading, unavailable, onTitleClick }) {
+export default function RecommendationPanel({ recommendations, loading, error, onTitleClick }) {
   const orderedRecommendations = (recommendations ?? [])
     .slice()
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
@@ -184,15 +184,15 @@ export default function RecommendationPanel({ recommendations, loading, unavaila
       <h2 className="recommendation-panel-title">Reading Journey</h2>
 
       <div className="recommendation-panel-body">
-        {unavailable && <EmptyState message="Recommendations are unavailable." />}
+        {error && <EmptyState message={error} />}
 
         {loading && <EmptyState message="Recommendations will appear here." />}
 
-        {!loading && !unavailable && (!recommendations || recommendations.length === 0) && (
+        {!loading && !error && (!recommendations || recommendations.length === 0) && (
           <EmptyState message="Recommendations will appear here." />
         )}
 
-        {!loading && !unavailable && orderedRecommendations.length > 0 && (
+        {!loading && !error && orderedRecommendations.length > 0 && (
           <div className="recommendation-panel-list">
             {orderedRecommendations.map((doc, index) => (
               <RecommendationItem
