@@ -2,11 +2,11 @@
 
 ## Overview
 
-Primrose uses two specialized stores and a FastAPI orchestration layer:
-
-- PostgreSQL stores document metadata and ingestion state.
+Primrose uses PostgreSQL, Qdrant, Redis, and a FastAPI orchestration layer:
+- PostgreSQL stores document metadata, ingestion state, topic assignments, and topic metadata.
 - Qdrant stores document embeddings and powers approximate nearest-neighbor retrieval.
-- FastAPI coordinates semantic search, related-paper discovery, and recommendation generation.
+- Redis caches expensive retrieval, recommendation, and topic-read results.
+- FastAPI coordinates ingestion, semantic search, related-paper discovery, recommendations, and topic APIs.
 
 Embedding generation is handled by an asynchronous background worker. Recommendation generation is handled separately through a reranking plus LLM pipeline.
 
@@ -32,7 +32,10 @@ primrose/
       search.py         -- Semantic search and related-paper lookup
       vector_store.py   -- Qdrant client wrapper
       recommendations.py -- Gemini-based reading journey generation
-      queue_docs.py     -- 
+      topic_worker.py   -- K-Means topic discovery
+      clusters.py       -- Gemini-based topic labeling
+      topics.py         -- Topic read APIs and Redis caching
+      queue_docs.py     -- Document job publishing
       worker.py         -- Pub/Sub-triggered embedding worker
 
   frontend/
@@ -51,12 +54,24 @@ primrose/
 | --- | --- | --- |
 | `postgres` | `postgres:17` | Persistent document metadata store |
 | `qdrant` | `qdrant/qdrant:latest` | Vector database for embeddings |
+| `cache` |	`redis`	| Cache for expensive API computations |
 | `init_schema` | built from repo | One-shot database schema bootstrap |
 | `worker` | built from repo | Processes embedding jobs delivered through Google Cloud Pub/Sub and writes vectors to Qdrant|
 | `api` | built from repo | FastAPI application and orchestration layer |
 | `frontend` | built from `./frontend` | React UI |
 
-The Docker Compose stack brings up the schema initializer before the API and worker start. That keeps the database creation step separate from the runtime containers.
+The Docker Compose stack brings up the schema initializer before the API starts. Redis is used as a shared cache by the API, including topic list and topic detail responses.
+
+---
+
+## Cache Architecture
+
+Redis sits in front of the most expensive read paths in the API:
+
+- `backend/services/topics.py` caches the topic list, individual topic details, and topic paper lists.
+- `backend/services/recommendations.py` caches generated Reading Journeys per source paper.
+
+Both code paths fall back to PostgreSQL and Gemini when cache entries are missing, and they repopulate Redis after a successful response. The cache entries use a shared TTL so hot topics and frequently requested recommendation results stay fast without becoming stale indefinitely.
 
 ---
 
@@ -76,6 +91,13 @@ The core document record lives in PostgreSQL and includes:
 - `embedded`
 
 The `embedded` flag is the coordination signal between PostgreSQL and Qdrant. A document can exist in the metadata store before its vector has been generated and written.
+
+Topic data lives in two additional tables:
+
+- `topics`
+- `document_topics`
+
+`topics` stores the cluster identifier, generated topic name, paper count, and cluster centroid. `document_topics` maps each document to exactly one topic cluster.
 
 Qdrant points are stored with the document ID as the point ID and a payload containing lightweight metadata such as `document_id`, `year_published`, and `authors`.
 
@@ -117,6 +139,38 @@ Qdrant points are stored with the document ID as the point ID and a payload cont
 After a document is stored in PostgreSQL, the API publishes its document ID to a Google Cloud Pub/Sub topic. A dedicated Cloud Run worker receives the message, generates the embedding using SentenceTransformer, writes the vector to Qdrant, and marks the document as embedded in PostgreSQL. This asynchronous pipeline keeps document ingestion responsive while allowing embedding to scale independently of the API.
 
 The API also exposes `POST /documents/{id}/embed` for manually embedding a specific document when needed.
+
+---
+
+## Topic Architecture
+
+```text
+Embedded documents in Qdrant
+   |
+topic_worker.py
+   |
+K-Means clustering 
+   |
+topics + document_topics in PostgreSQL
+   |
+clusters.py
+   |
+Representative papers from Qdrant centroids
+   |
+Gemini topic labeling
+   |
+topics.cluster_name update
+```
+
+Topic generation is a batch workflow built on top of the embedding corpus rather than a user-facing request path.
+
+1. `topic_worker.py` pulls up to 10,000 embedded vectors from Qdrant and clusters them with K-Means into 100 research topics.
+2. It writes one `topics` row per cluster with the cluster centroid and paper count.
+3. It writes `document_topics` rows to associate each document with its cluster.
+4. `clusters.py` finds unnamed topics, uses each cluster centroid to fetch representative documents from Qdrant, and asks Gemini to generate a concise research topic name.
+5. The generated label is stored back in `topics.cluster_name`.
+
+The topic read APIs in `backend/services/topics.py` then serve the clustered data through `/topics`, `/topics/{topic_id}`, and `/topics/{topic_id}/papers`, with Redis caching to avoid repeated database lookups for popular topic pages.
 
 ---
 
@@ -249,5 +303,4 @@ Qdrant is configured with cosine distance and a vector size of 384 to match the 
 ## Operational Notes
 
 - `backend/init_schema.py` creates the database tables at startup.
-
 

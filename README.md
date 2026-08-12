@@ -4,7 +4,7 @@
 
 ![Primrose](./assets/hero.png)
 
-![Stage](https://img.shields.io/badge/stage-2%20of%207-rose?style=flat-square)
+![Stage](https://img.shields.io/badge/stage-3%20of%207-rose?style=flat-square)
 ![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)
 ![Python](https://img.shields.io/badge/python-3.13-blue?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.138-009688?style=flat-square&logo=fastapi&logoColor=white)
@@ -17,7 +17,7 @@
 
 Primrose is an AI-powered research exploration platform built to make scientific literature easier to navigate.
 
-It combines semantic retrieval, neural reranking, and LLM-guided recommendations to help researchers discover not only relevant papers, but what to read next. Over time, Primrose will evolve into a research intelligence platform capable of surfacing emerging topics, discovering relationships between ideas, and building an interactive knowledge graph of scientific literature.
+It combines semantic retrieval, neural reranking, batch topic discovery, and LLM-guided recommendations to help researchers discover not only relevant papers, but what to read next and how papers cluster into broader research themes. Over time, Primrose will evolve into a research intelligence platform capable of discovering relationships between ideas and building an interactive knowledge graph of scientific literature.
 
 ---
 
@@ -27,7 +27,7 @@ It combines semantic retrieval, neural reranking, and LLM-guided recommendations
 |-------|--------|------------|
 | 1 | **Complete** | Semantic Discovery Foundation |
 | 2 | **Complete** | Recommendation Engine |
-| 3 | Planned | Topic Discovery |
+| 3 | **Complete** | Topic Discovery |
 | 4 | Planned | Entity Extraction |
 | 5 | Planned | Relationship Discovery |
 | 6 | Planned | Knowledge Graph |
@@ -55,6 +55,15 @@ The recommendation engine combines neural retrieval, reranking, and LLM reasonin
 - AI-generated Reading Journeys
 - Recommendation notes
 - Educational paper sequencing
+
+### Topic Discovery
+
+Primrose clusters embedded papers into research topics, assigns each document to a topic cluster, and uses Gemini to generate concise topic names. The topic browser exposes these clusters through the API and frontend so users can explore a corpus by theme instead of only by individual paper.
+
+- K-Means topic clustering
+- Topic naming with Gemini
+- Topic list and topic detail pages
+- Cluster paper counts and representative papers
 
 ---
  
@@ -88,6 +97,12 @@ Most queries retrieved highly relevant papers with strong topical alignment. How
                       │
           Sentence Transformers
                       │
+                   Redis Cache
+                      │
+            Topic Worker + Gemini
+                      │
+             Topic Tables in PostgreSQL
+                      │
             Cross-Encoder Reranker
                       │
           Gemini Recommendation Engine
@@ -95,7 +110,7 @@ Most queries retrieved highly relevant papers with strong topical alignment. How
                Reading Journey
 ```
 
-The API orchestrates retrieval while independent services handle embedding generation and recommendation.
+The API orchestrates retrieval while independent services handle embedding generation, cache-backed reads, topic discovery, and recommendation.
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for full dataflow diagrams.
 
@@ -121,7 +136,23 @@ Related      Recommendation
             Reading Journey
 ```
 
-The retriever is responsible for finding relevant papers while the LLM is responsible for educational sequencing and recommendation quality
+Topic discovery follows a separate batch path:
+
+```text
+Embedded Corpus
+   │
+Topic Worker
+   │
+K-Means Clustering
+   │
+topics / document_topics
+   │
+Gemini Topic Labeling
+   │
+Topic Browser
+```
+
+The retriever is responsible for finding relevant papers while the LLM is responsible for educational sequencing and recommendation quality. Topic discovery is a corpus-wide batch job that turns the same embeddings into navigable research themes.
 
 ---
 
@@ -130,6 +161,8 @@ The retriever is responsible for finding relevant papers while the LLM is respon
 **Frontend** -- React, Vite, Axios
 
 **Backend** -- FastAPI, SQLAlchemy, PostgreSQL, Qdrant, Sentence Transformers, Cross-Encoder, Google Gemini
+
+**Cache** -- Redis for cached recommendation journeys and topic read responses
 
 **Infrastructure** -- Docker, Docker Compose
 
@@ -143,7 +176,11 @@ The retriever is responsible for finding relevant papers while the LLM is respon
 
 **Semantic search over keyword matching.** The same concept appears under dozens of names in the research literature. Embedding-based retrieval captures intent rather than surface terms.
 
-**Hybrid recommendation pipeline.*** Semantic retrieval identifies relevant papers, while Cross-Encoder reranking improves candidate quality. The LLM then converts retrieved papers into a coherent Reading Journey instead of acting as a second retriever.
+**Hybrid recommendation pipeline.** Semantic retrieval identifies relevant papers, while Cross-Encoder reranking improves candidate quality. The LLM then converts retrieved papers into a coherent Reading Journey instead of acting as a second retriever.
+
+**Separate topic pipeline.** Topic discovery is computed offline from the embedding corpus, which keeps topic browsing fast and lets the UI show stable cluster counts, names, and representative papers.
+
+**Redis cache for hot paths.** Topic list/detail pages and generated Reading Journeys are cached so the API can serve repeat requests quickly without recomputing the same database and LLM work.
 
 ---
 
@@ -215,6 +252,9 @@ The `-v` flag removes the isolated test volumes so the next run starts from a cl
 | GET | /documents/search | Semantic search |
 | GET | /documents/{id}/related | Related paper discovery |
 | GET | /documents/{id}/recommendations | Reading Journey |
+| GET | /topics | Topic list |
+| GET | /topics/{topic_id} | Topic detail |
+| GET | /topics/{topic_id}/papers | Papers in a topic |
 | POST | /documents | Ingest a new document |
 | PUT | /documents/{id} | Update document metadata |
 | DELETE | /documents/{id} | Remove a document |
@@ -230,6 +270,7 @@ The `-v` flag removes the isolated test volumes so the next run starts from a cl
 - Frontend is read-only; corpus management requires direct API access
 - Recommendation quality depends on the selected LLM
 - Reading journeys are context-aware rather than user-personalized
+- Topic names are generated from cluster representatives, so they may need occasional refinement for edge cases
 
 
 ---
@@ -238,8 +279,6 @@ The `-v` flag removes the isolated test volumes so the next run starts from a cl
 
 - Domain-specific embedding model (SPECTER2)
 - User authentication and corpus management interface
-- Topic discovery
-- Topic clustering
 - Citation graph integration
 - Knowledge graph construction
 ---

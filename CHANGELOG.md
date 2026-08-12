@@ -27,11 +27,19 @@ All notable changes to Primrose are documented here.
 
 - Added AI-powered Reading Journeys for guided paper discovery
 - Introduced Cross-Encoder reranking to improve retrieval quality
-- Integrated Gemini to generate contextual recommendation notes
+- Integrated Gemini to generate contextual Reading Journeys
 - Added a recommendation API endpoint and backend recommendation service
 - Added first-class support for arXiv IDs in the paper schema
 - Improved Docker startup with automatic database schema initialization
 - Refactored the retrieval pipeline into retrieval, reranking, and recommendation stages
 - Expanded testing infrastructure with isolated databases and vector stores
-- Updated the architecture to support scalable AI-assisted research exploration
 - Replaced the polling embedding worker with an event-driven Google Cloud Pub/Sub pipeline.
+
+## Stage 3 — Topic Discovery
+
+- Added automatic topic discovery using K-Means clustering
+- Grouped papers into 100 research topics based on their embeddings
+- Added topic names using representative papers and Gemini
+- Added APIs for topics, topic details, and topic papers
+- Added a Topic view to explore discovered topics
+- Added Redis caching for Reading Journeys and Topics
