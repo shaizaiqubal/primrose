@@ -2,12 +2,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse, RecommendedPaperResponse, TopicResponse
 from backend.app.database import SessionLocal
-from backend.app.models import Documents,Topics,Document_Topics
+from backend.app.models import Documents
 from backend.services.vector_store import delete_embedding, insert_embedding
 from backend.services.reranker import RankedDocument
 from backend.services.embed import embed_content
 from backend.services.search import search, get_related, get_document_service
 from backend.services.recommendations import recommendation_engine, RecommendedPaper
+from backend.services.topics import get_topics, get_topic, get_topic_papers
 from backend.services.queue_docs import queue_documents
 from backend.app.config import FRONTEND_URL
 from sqlalchemy import select
@@ -19,6 +20,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(levelname)s:%(name)s:%(message)s",
 )
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -75,40 +77,17 @@ def get_documents() -> list[Documents]:
         result = list(db.execute(stmt).scalars().all())
         return result
 
-@app.get('/topics', response_model= list[TopicResponse])
-def get_topics():
-    with SessionLocal() as db:
-        stmt = select(Topics).order_by(Topics.paper_count.desc())
-        result = db.execute(stmt).scalars().all()
-    return result
+@app.get('/topics', response_model=list[TopicResponse])
+def topics():
+    return get_topics()
 
 @app.get('/topics/{topic_id}', response_model=TopicResponse)
-def get_topic(topic_id: int):
-    with SessionLocal() as db:
-            stmt = select(Topics).where(Topics.cluster_id==topic_id)
-            result = db.execute(stmt).scalar_one_or_none()
-
-    if result is None:
-        raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Topic not found"
-                )
-
-    return result
+def topic(topic_id: int):
+    return get_topic(topic_id)
 
 @app.get('/topics/{topic_id}/papers', response_model=list[DocumentResponse])
-def get_topic_papers(topic_id: int) -> list[Documents]:
-    with SessionLocal() as db:
-        stmt = (select(Documents)
-            .join(Document_Topics, Documents.id == Document_Topics.id)
-            .where(Document_Topics.cluster_id == topic_id))
-        result = db.execute(stmt).scalars().all()
-        if result is None:
-            raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Topic is empty"
-                )
-    return list(result)
+def topic_papers(topic_id: int):
+    return get_topic_papers(topic_id)
 
 
 @app.get("/documents/search", response_model=list[RankedDocumentResponse])
