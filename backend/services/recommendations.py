@@ -165,8 +165,12 @@ def recommendation_engine(query: Documents, candidates: list[RankedDocument]) ->
             )
 
         payload = json.dumps(jsonable_encoder(recommended_papers))
-        cache.set(key, payload, ex=TTL)
-        logger.info("Cached recommendations for key %s (ttl=%s)", key, TTL)
+        try:
+            cache.set(key, payload, ex=TTL)
+        except redis.RedisError as exc:
+            logger.warning("Failed to cache recommendations for key %s: %s", key, exc)
+        else:
+            logger.info("Cached recommendations for key %s (ttl=%s)", key, TTL)
 
         return recommended_papers
 
