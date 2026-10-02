@@ -8,10 +8,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      init_schema:
-        condition: service_completed_successfully
+      # init_schema:
+      #   condition: service_completed_successfully
     volumes:
       - ./backend:/app/backend
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
 
   postgres:
     image: postgres:17
@@ -20,7 +22,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U primroses1 -d primroses1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -34,14 +36,14 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
-  init_schema:
-    build: .
-    command: python -m backend.init_schema
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-    depends_on:
-      postgres:
-        condition: service_healthy
+  # init_schema:
+  #   build: .
+  #   command: python -m backend.init_schema
+  #   environment:
+  #     DATABASE_URL: ${DATABASE_URL}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
 
   frontend:
     build:
