@@ -84,9 +84,13 @@ def clean_test_state():
 
 @pytest.fixture
 def client(clean_test_state, monkeypatch):
-    import backend.app.main as app_main
+    import backend.app.routers.documents as documents_router
 
-    monkeypatch.setattr(app_main, "queue_documents", lambda document: "pubsub-disabled")
+    monkeypatch.setattr(
+        documents_router,
+        "queue_documents",
+        lambda document: "pubsub-disabled",
+    )
 
     with TestClient(app) as test_client:
         yield test_client
