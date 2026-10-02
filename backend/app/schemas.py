@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from datetime import datetime
 
 class Document(BaseModel):
@@ -57,3 +57,18 @@ class TopicResponse(BaseModel):
     model_config = {
             "from_attributes": True
         }
+
+class UserCreate(BaseModel):
+    email : EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
