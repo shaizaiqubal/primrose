@@ -6,15 +6,15 @@ from backend.services.recommendations import RecommendedPaper, recommendation_en
 from backend.services.search import get_document_service, get_related
 
 
-router = APIRouter()
+router = APIRouter(prefix="/documents", tags=["recommendations"])
 
 
-@router.get("/documents/{id}/related", response_model=list[RankedDocumentResponse])
+@router.get("/{id}/related", response_model=list[RankedDocumentResponse])
 def get_related_documents(id: int) -> list[RankedDocument]:
     return get_related(id)
 
 
-@router.get("/documents/{id}/recommendations", response_model=list[RecommendedPaperResponse])
+@router.get("/{id}/recommendations", response_model=list[RecommendedPaperResponse])
 def get_recommendations(id: int) -> list[RecommendedPaper]:
     try:
         query_doc = get_document_service(id)

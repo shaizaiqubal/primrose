@@ -1,19 +1,19 @@
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy import select
 
 from backend.app.database import SessionLocal
-from backend.app.models import Documents
+from backend.app.models import Documents, User, Bookmark
 from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse
 from backend.services.embed import embed_content
 from backend.services.queue_docs import queue_documents
 from backend.services.reranker import RankedDocument
 from backend.services.search import get_document_service, search
 from backend.services.vector_store import delete_embedding, insert_embedding
+from backend.app.routers.auth import get_current_user
 
-
-router = APIRouter()
+router = APIRouter(prefix="/documents", tags=["documents"])
 
 
 def _get_document_or_404(db, id: int) -> Documents:
@@ -27,8 +27,11 @@ def _get_document_or_404(db, id: int) -> Documents:
     return result
 
 
-@router.post("/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-def post_documents(request: Document) -> Documents:
+@router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+def post_documents(
+    request: Document,
+    user: User = Depends(get_current_user)
+    ) -> Documents:
     with SessionLocal() as db:
         entry = Documents(
             arxiv_id=request.arxiv_id,
@@ -38,38 +41,47 @@ def post_documents(request: Document) -> Documents:
             year_published=request.year_published,
             url=request.url,
             categories=request.categories,
+            uploaded_by= user.id,
         )
         db.add(entry)
         db.commit()
         db.refresh(entry)
-        db.close()
-
+    
     message_id = queue_documents(entry)
     logging.info("Published message %s", message_id)
     return entry
 
 
-@router.get("/documents", response_model=list[DocumentResponse])
+@router.get("", response_model=list[DocumentResponse])
 def get_documents() -> list[Documents]:
     with SessionLocal() as db:
         stmt = select(Documents).order_by(Documents.id).limit(50)
         return list(db.execute(stmt).scalars().all())
 
 
-@router.get("/documents/search", response_model=list[RankedDocumentResponse])
+@router.get("/search", response_model=list[RankedDocumentResponse])
 def search_documents(query: str) -> list[RankedDocument]:
     return search(query)
 
 
-@router.get("/documents/{id}", response_model=DocumentResponse)
+@router.get("/{id}", response_model=DocumentResponse)
 def get_document(id: int) -> Documents:
     return get_document_service(id)
 
 
-@router.delete("/documents/{id}")
-def delete_document(id: int) -> dict:
+@router.delete("/{id}")
+def delete_document(
+    id: int,
+    user: User = Depends(get_current_user)
+    ) -> dict:
+
     with SessionLocal() as db:
         result = _get_document_or_404(db, id)
+        if result.uploaded_by != user.id:
+            raise HTTPException(
+                status_code= status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to delete this document."
+            )
         try:
             delete_embedding(result.id)
             db.delete(result)
@@ -83,10 +95,20 @@ def delete_document(id: int) -> dict:
     return {"message": "Document deleted successfully"}
 
 
-@router.put("/documents/{id}", response_model=DocumentResponse)
-def update_document(id: int, request: Document) -> Documents:
+@router.put("/{id}", response_model=DocumentResponse)
+def update_document(
+    id: int,
+    request: Document,
+    user: User = Depends(get_current_user)
+    ) -> Documents:
+
     with SessionLocal() as db:
         result = _get_document_or_404(db, id)
+        if result.uploaded_by != user.id:
+            raise HTTPException(
+                status_code= status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to modify this document."
+            )
         result.title = request.title
         result.abstract = request.abstract
         result.authors = request.authors
@@ -98,8 +120,65 @@ def update_document(id: int, request: Document) -> Documents:
         db.refresh(result)
         return result
 
+@router.post("/{document_id}/bookmark", status_code=status.HTTP_201_CREATED)
+def add_bookmark(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    with SessionLocal() as db:
+        document = _get_document_or_404(db, document_id)
 
-@router.post("/documents/{id}/embed")
+        existing_bookmark = db.execute(
+            select(Bookmark).where(
+                Bookmark.user_id == current_user.id,
+                Bookmark.document_id == document.id,
+            )
+        ).scalar_one_or_none()
+
+        if existing_bookmark:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Document is already bookmarked.",
+            )
+
+        bookmark = Bookmark(
+            user_id=current_user.id,
+            document_id=document.id,
+        )
+
+        db.add(bookmark)
+        db.commit()
+
+    return {"message": "Document bookmarked successfully"}
+
+@router.delete("/documents/{document_id}/bookmark")
+def remove_bookmark(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    with SessionLocal() as db:
+        document = _get_document_or_404(db, document_id)
+
+        bookmark = db.execute(
+            select(Bookmark).where(
+                Bookmark.user_id == current_user.id,
+                Bookmark.document_id == document.id,
+            )
+        ).scalar_one_or_none()
+
+        if bookmark is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Bookmark not found.",
+            )
+
+        db.delete(bookmark)
+        db.commit()
+
+    return {"message": "Bookmark removed successfully"}
+
+
+@router.post("/{id}/embed")
 def embed_document(id: int) -> dict:
     with SessionLocal() as db:
         result = _get_document_or_404(db, id)

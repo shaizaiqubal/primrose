@@ -20,7 +20,8 @@ from backend.app.security import (
 from backend.services.send_email import send_verification_email
 
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
+
 oauth2_scheme = HTTPBearer()
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme)
@@ -189,11 +190,12 @@ def login(user_data: UserCreate) -> dict:
 
 
 @router.post("/refresh")
-def refresh_token(refresh_token: str) -> dict:
+def refresh_token(request: RefreshTokenRequest) -> dict:
     with SessionLocal() as db:
         token = db.execute(
             select(RefreshToken).where(
-                RefreshToken.token_hash == hash_verification_token(refresh_token)
+                RefreshToken.token_hash
+                == hash_verification_token(request.refresh_token)
             )
         ).scalar_one_or_none()
 
@@ -230,11 +232,12 @@ def refresh_token(refresh_token: str) -> dict:
 
 
 @router.post("/logout")
-def logout(refresh_token: str) -> dict:
+def logout(request: RefreshTokenRequest) -> dict:
     with SessionLocal() as db:
         token = db.execute(
             select(RefreshToken).where(
-                RefreshToken.token_hash == hash_verification_token(refresh_token)
+                RefreshToken.token_hash
+                == hash_verification_token(request.refresh_token)
             )
         ).scalar_one_or_none()
 
@@ -252,9 +255,4 @@ def logout(refresh_token: str) -> dict:
         db.refresh(token)
         return {"message": "Logout successful"}
 
-@router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
-def get_me(
-    current_user: User = Depends(get_current_user)
-):
-    return current_user
 
