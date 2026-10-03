@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, Text, ForeignKey, JSON
+from sqlalchemy import DateTime, Text, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
 from backend.app.database import Base 
@@ -17,6 +17,7 @@ class Documents(Base):
     url: Mapped[str | None] = mapped_column()
     categories: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at : Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, default=None)
     embedded : Mapped[bool] = mapped_column(default=False)
 
 
@@ -127,4 +128,21 @@ class RefreshToken(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
+    )
+
+
+class Bookmark(Base):
+    __tablename__ = "bookmarks"
+
+    id : Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id : Mapped[int] = mapped_column(ForeignKey("users.id"), default=None, nullable=False)
+    document_id : Mapped[int] = mapped_column(ForeignKey("documents.id"), default=None, nullable=False)
+    created_at : Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "document_id",
+            name="uq_bookmark_user_document",
+        ),
     )
