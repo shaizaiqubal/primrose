@@ -46,5 +46,3 @@ def create_access_token(user_id: int) -> str:
 def create_refresh_token() -> str:
     return secrets.token_urlsafe(32)
 
-print(create_access_token(2))
-print(create_refresh_token())
