@@ -4,7 +4,7 @@ def test_list_documents(client):
     assert response.json() == []
 
 
-def test_create_document(client):
+def test_create_document(authenticated_client):
     payload = {
         "title": "Test Paper",
         "abstract": "Test abstract",
@@ -12,19 +12,19 @@ def test_create_document(client):
         "year_published": 2024,
         "url": "https://example.com",
     }
-    response = client.post("/documents", json=payload)
+    response = authenticated_client.post("/documents", json=payload)
     data = response.json()
     assert response.status_code in (200, 201)
     assert data["title"] == payload["title"]
     assert "id" in data
 
 
-def test_invalid_document(client):
-    response = client.post("/documents", json={"title": "Only title"})
+def test_invalid_document(authenticated_client):
+    response = authenticated_client.post("/documents", json={"title": "Only title"})
     assert response.status_code == 422
 
 
-def test_retrieve_document(client):
+def test_retrieve_document(authenticated_client, client):
     payload = {
         "title": "Retrieve Paper",
         "abstract": "Retrieve abstract",
@@ -32,7 +32,7 @@ def test_retrieve_document(client):
         "year_published": 2024,
         "url": "https://example.com",
     }
-    created = client.post("/documents", json=payload).json()
+    created = authenticated_client.post("/documents", json=payload).json()
     response = client.get(f"/documents/{created['id']}")
     data = response.json()
     assert response.status_code == 200
@@ -47,8 +47,8 @@ def test_nonexistent_document(client):
     assert response.json()["detail"] == "Document not found"
 
 
-def test_update_existing_document(client):
-    created = client.post(
+def test_update_existing_document(authenticated_client):
+    created = authenticated_client.post(
         "/documents",
         json={
             "title": "Old Title",
@@ -65,7 +65,7 @@ def test_update_existing_document(client):
         "year_published": 2025,
         "url": "https://example.org",
     }
-    response = client.put(f"/documents/{created['id']}", json=payload)
+    response = authenticated_client.put(f"/documents/{created['id']}", json=payload)
     data = response.json()
     assert response.status_code == 200
     assert data["id"] == created["id"]
@@ -73,8 +73,8 @@ def test_update_existing_document(client):
     assert data["abstract"] == payload["abstract"]
 
 
-def test_update_nonexistent_document(client):
-    response = client.put(
+def test_update_nonexistent_document(authenticated_client):
+    response = authenticated_client.put(
         "/documents/999999",
         json={
             "title": "New Title",
@@ -87,13 +87,13 @@ def test_update_nonexistent_document(client):
     assert response.status_code == 404
 
 
-def test_update_invalid_payload(client):
-    response = client.put("/documents/1", json={"title": "Only title"})
+def test_update_invalid_payload(authenticated_client):
+    response = authenticated_client.put("/documents/1", json={"title": "Only title"})
     assert response.status_code == 422
 
 
-def test_delete_existing_document(client):
-    created = client.post(
+def test_delete_existing_document(authenticated_client):
+    created = authenticated_client.post(
         "/documents",
         json={
             "title": "Delete Title",
@@ -103,17 +103,17 @@ def test_delete_existing_document(client):
             "url": "https://example.com",
         },
     ).json()
-    response = client.delete(f"/documents/{created['id']}")
+    response = authenticated_client.delete(f"/documents/{created['id']}")
     assert response.status_code == 200
 
 
-def test_delete_nonexistent_document(client):
-    response = client.delete("/documents/999999")
+def test_delete_nonexistent_document(authenticated_client):
+    response = authenticated_client.delete("/documents/999999")
     assert response.status_code == 404
 
 
-def test_verify_deletion(client):
-    created = client.post(
+def test_verify_deletion(authenticated_client, client):
+    created = authenticated_client.post(
         "/documents",
         json={
             "title": "Temp Title",
@@ -123,6 +123,6 @@ def test_verify_deletion(client):
             "url": "https://example.com",
         },
     ).json()
-    client.delete(f"/documents/{created['id']}")
+    authenticated_client.delete(f"/documents/{created['id']}")
     response = client.get(f"/documents/{created['id']}")
     assert response.status_code == 404

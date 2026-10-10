@@ -13,8 +13,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 os.environ["TESTING"] = "1"
 
 from backend.app.config import DATABASE_URL, QDRANT_COLLECTION_NAME, QDRANT_URL
-from backend.app.database import Base, engine
+from backend.app.database import Base, SessionLocal, engine
 from backend.app.main import app
+from backend.app.models import User
+from backend.app.security import create_access_token
 import backend.services.vector_store as vector_store
 
 
@@ -94,3 +96,20 @@ def client(clean_test_state, monkeypatch):
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def authenticated_client(client):
+    with SessionLocal() as db:
+        user = User(
+            email="test-user@example.com",
+            password_hash="test-password-hash",
+            email_verified=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        access_token = create_access_token(user.id)
+
+    client.headers.update({"Authorization": f"Bearer {access_token}"})
+    return client

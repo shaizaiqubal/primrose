@@ -18,31 +18,31 @@ def _create_document(client, title, abstract, url):
     return response.json()
 
 
-def test_search_returns_semantically_similar_documents(client):
+def test_search_returns_semantically_similar_documents(authenticated_client):
     first = _create_document(
-        client,
+        authenticated_client,
         "Transformer retrieval for scientific papers",
         "This paper studies transformer retrieval for scientific paper search and semantic matching.",
         "https://example.com/search-1",
     )
     second = _create_document(
-        client,
+        authenticated_client,
         "Semantic search with transformers for research papers",
         "This work studies semantic search with transformers for academic paper retrieval.",
         "https://example.com/search-2",
     )
 
-    assert client.post(f"/documents/{first['id']}/embed").status_code == 200
-    assert client.post(f"/documents/{second['id']}/embed").status_code == 200
+    assert authenticated_client.post(f"/documents/{first['id']}/embed").status_code == 200
+    assert authenticated_client.post(f"/documents/{second['id']}/embed").status_code == 200
 
-    response = client.get("/documents/search", params={"query": "transformer semantic search for research papers"})
+    response = authenticated_client.get("/documents/search", params={"query": "transformer semantic search for research papers"})
 
     assert response.status_code == 200
     ids = [item["document"]["id"] for item in response.json()]
     assert second["id"] in ids
 
 
-def test_recommendations_returns_five_papers(client, monkeypatch):
+def test_recommendations_returns_five_papers(authenticated_client, monkeypatch):
     class _FakeInteractionResponse:
         def __init__(self, output_text):
             self.output_text = output_text
@@ -74,7 +74,7 @@ def test_recommendations_returns_five_papers(client, monkeypatch):
 
     documents = [
         _create_document(
-            client,
+            authenticated_client,
             f"Recommendation paper {index}",
             f"This paper explores transformer retrieval and semantic search topic {index}.",
             f"https://example.com/recommend-{index}",
@@ -83,9 +83,9 @@ def test_recommendations_returns_five_papers(client, monkeypatch):
     ]
 
     for document in documents:
-        assert client.post(f"/documents/{document['id']}/embed").status_code == 200
+        assert authenticated_client.post(f"/documents/{document['id']}/embed").status_code == 200
 
-    response = client.get(f"/documents/{documents[0]['id']}/recommendations")
+    response = authenticated_client.get(f"/documents/{documents[0]['id']}/recommendations")
 
     assert response.status_code == 200
     data = response.json()
