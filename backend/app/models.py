@@ -1,4 +1,5 @@
-from sqlalchemy import DateTime, Text, ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import DateTime, Text, ForeignKey, String, JSON, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
 from backend.app.database import Base 
@@ -146,3 +147,27 @@ class Bookmark(Base):
             name="uq_bookmark_user_document",
         ),
     )
+
+
+class Entity(Base):
+    __tablename__ = "entities"
+    __table_args__ = (UniqueConstraint("canonical_name", "type"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    canonical_name: Mapped[str] = mapped_column()
+    type: Mapped[str] = mapped_column()
+    aliases: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+
+
+
+class Document_Entity(Base):
+    __tablename__ = "document_entities"
+
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True
+    )
+    entity_id: Mapped[int] = mapped_column(
+        ForeignKey("entities.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    confidence: Mapped[float] = mapped_column(default=1.0)
+    extractor_version: Mapped[str] = mapped_column()
