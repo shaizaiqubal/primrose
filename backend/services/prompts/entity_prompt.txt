@@ -15,7 +15,10 @@ Rules:
 - Skip vague descriptions. Only extract things that have a specific name or standard term.
 - If the same entity appears more than once, list it once.
 - If a paper has no entities of a type, return nothing for that type.
-- Only extract entities that the paper itself uses, evaluates, introduces, or addresses. Do NOT extract anything mentioned only as future work, a possible application, or a suggestion for other researchers (e.g. "could be used for X", "future studies such as Y").
+- Only extract entities that the paper itself uses, evaluates, introduces, or addresses. Do NOT extract anything mentioned only as past or future work, a possible application, or a suggestion for other researchers (e.g. "could be used for X", "future studies such as Y").
 - Broad research areas and learning paradigms (e.g. representation learning, transfer learning, cross-lingual transfer) are methods, not tasks.
 - Broad fields of study (e.g. natural language processing, computer vision, machine learning) are not entities. Skip them.
 - For type "model", only extract specific named models (e.g. BERT, GPT-2). Skip categories or families of models (e.g. "neural language models", "pre-trained language models").
+- Classical machine learning algorithms (e.g. SVM, Naive Bayes, random forest) are methods, not models. "model" is only for specific named trained models or architectures (e.g. BERT, ResNet-50).
+- If the text gives both a full name and its abbreviation, output the full name only, once.
+- If the paper's main technique has a recognizable name, extract it as a method even when the text refers to it as "this approach" or "the proposed method". Generic phrases like "our approach" are only skipped when no specific name is given anywhere in the text.
