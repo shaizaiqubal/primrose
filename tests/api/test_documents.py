@@ -1,3 +1,10 @@
+from unittest.mock import Mock
+
+from backend.app.database import SessionLocal
+from backend.app.models import Documents
+from backend.services import entities as entity_service
+
+
 def test_list_documents(client):
     response = client.get("/documents")
     assert response.status_code == 200
@@ -17,6 +24,60 @@ def test_create_document(authenticated_client):
     assert response.status_code in (200, 201)
     assert data["title"] == payload["title"]
     assert "id" in data
+
+
+def test_create_document_processes_uploaded_document(authenticated_client, monkeypatch):
+    from backend.app.routers import documents as documents_router
+
+    process_document = Mock(return_value=[])
+    monkeypatch.setattr(
+        documents_router,
+        "process_uploaded_document",
+        process_document,
+    )
+    response = authenticated_client.post(
+        "/documents",
+        json={
+            "title": "Indexed Paper",
+            "abstract": "Paper abstract",
+            "authors": "Author",
+            "year_published": 2024,
+            "url": "https://example.com",
+        },
+    )
+
+    assert response.status_code == 201
+    process_document.assert_called_once()
+    assert process_document.call_args.args[0].id == response.json()["id"]
+
+
+def test_entity_extraction_failure_embeds_document_without_entities(monkeypatch):
+    with SessionLocal() as db:
+        document = Documents(title="Paper", abstract="Abstract")
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+
+    def fail_extraction(*_args):
+        raise RuntimeError("extractor unavailable")
+
+    monkeypatch.setattr(entity_service, "name_entities", fail_extraction)
+    monkeypatch.setattr(entity_service, "embed_content", lambda **_kwargs: [0.1, 0.2])
+    inserted = {}
+    monkeypatch.setattr(
+        entity_service,
+        "insert_embedding",
+        lambda _document, _vector, entity_ids: inserted.update(entity_ids=entity_ids),
+    )
+    monkeypatch.setattr(entity_service, "index_entity_vectors", lambda _entities: None)
+
+    entity_service.process_uploaded_document(document)
+
+    assert inserted["entity_ids"] == []
+    with SessionLocal() as db:
+        stored_document = db.get(Documents, document.id)
+        assert stored_document is not None
+        assert stored_document.embedded is True
 
 
 def test_invalid_document(authenticated_client):

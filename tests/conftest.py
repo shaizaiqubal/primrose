@@ -90,8 +90,8 @@ def client(clean_test_state, monkeypatch):
 
     monkeypatch.setattr(
         documents_router,
-        "queue_documents",
-        lambda document: "pubsub-disabled",
+        "process_uploaded_document",
+        lambda document: [],
     )
 
     with TestClient(app) as test_client:
