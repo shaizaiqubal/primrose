@@ -1,0 +1,1244 @@
+[
+  {
+    "canonical": "Artificial Intelligence",
+    "type": "field",
+    "aliases": ["AI", "Artificial Intelligence"]
+  },
+  {
+    "canonical": "Machine Learning",
+    "type": "field",
+    "aliases": ["ML", "Machine Learning"]
+  },
+  {
+    "canonical": "Deep Learning",
+    "type": "field",
+    "aliases": ["DL", "Deep Neural Learning"]
+  },
+  {
+    "canonical": "Natural Language Processing",
+    "type": "field",
+    "aliases": ["NLP", "Natural Language Processing"]
+  },
+  {
+    "canonical": "Computer Vision",
+    "type": "field",
+    "aliases": ["CV", "Computer Vision"]
+  },
+  {
+    "canonical": "Reinforcement Learning",
+    "type": "field",
+    "aliases": ["RL", "Reinforcement Learning"]
+  },
+  {
+    "canonical": "Generative AI",
+    "type": "field",
+    "aliases": ["GenAI", "Generative Artificial Intelligence"]
+  },
+  {
+    "canonical": "Large Language Model",
+    "type": "model_family",
+    "aliases": ["LLM", "Large Language Models", "Large-Scale Language Model"]
+  },
+  {
+    "canonical": "Transformer",
+    "type": "architecture",
+    "aliases": ["Transformer Architecture", "Transformer Network", "Self-Attention Network"]
+  },
+  {
+    "canonical": "Convolutional Neural Network",
+    "type": "architecture",
+    "aliases": ["CNN", "ConvNet", "Convolutional Network", "Convolution Neural Network"]
+  },
+  {
+    "canonical": "Recurrent Neural Network",
+    "type": "architecture",
+    "aliases": ["RNN", "Recurrent Network"]
+  },
+  {
+    "canonical": "Long Short-Term Memory",
+    "type": "architecture",
+    "aliases": ["LSTM", "Long Short Term Memory Network"]
+  },
+  {
+    "canonical": "Gated Recurrent Unit",
+    "type": "architecture",
+    "aliases": ["GRU", "Gated Recurrent Unit Network"]
+  },
+  {
+    "canonical": "Generative Adversarial Network",
+    "type": "architecture",
+    "aliases": ["GAN", "Generative Adversarial Networks"]
+  },
+  {
+    "canonical": "Variational Autoencoder",
+    "type": "architecture",
+    "aliases": ["VAE", "Variational Auto-Encoder"]
+  },
+  {
+    "canonical": "Graph Neural Network",
+    "type": "architecture",
+    "aliases": ["GNN", "Graph Neural Networks"]
+  },
+  {
+    "canonical": "Graph Convolutional Network",
+    "type": "architecture",
+    "aliases": ["GCN", "Graph Convolution Network"]
+  },
+  {
+    "canonical": "Multilayer Perceptron",
+    "type": "architecture",
+    "aliases": ["MLP", "Multi-Layer Perceptron", "Feedforward Neural Network"]
+  },
+  {
+    "canonical": "U-Net",
+    "type": "architecture",
+    "aliases": ["U Net", "UNet", "U-Net Architecture"]
+  },
+  {
+    "canonical": "Vision Transformer",
+    "type": "architecture",
+    "aliases": ["ViT", "Vision Transformers"]
+  },
+  {
+    "canonical": "Mixture of Experts",
+    "type": "architecture",
+    "aliases": ["MoE", "Mixture-of-Experts", "Sparse Mixture of Experts"]
+  },
+  {
+    "canonical": "Retrieval-Augmented Generation",
+    "type": "method",
+    "aliases": ["RAG", "Retrieval Augmented Generation", "Retrieval-Augmented Generative AI"]
+  },
+  {
+    "canonical": "Fine-Tuning",
+    "type": "method",
+    "aliases": ["Fine Tuning", "Model Fine-Tuning", "Fine-Tuned Training"]
+  },
+  {
+    "canonical": "Transfer Learning",
+    "type": "method",
+    "aliases": ["Transfer Learning", "Knowledge Transfer"]
+  },
+  {
+    "canonical": "Federated Learning",
+    "type": "method",
+    "aliases": ["FL", "Federated Machine Learning"]
+  },
+  {
+    "canonical": "Self-Supervised Learning",
+    "type": "method",
+    "aliases": ["SSL", "Self Supervised Learning"]
+  },
+  {
+    "canonical": "Semi-Supervised Learning",
+    "type": "method",
+    "aliases": ["Semi Supervised Learning"]
+  },
+  {
+    "canonical": "Unsupervised Learning",
+    "type": "method",
+    "aliases": ["Unsupervised Machine Learning"]
+  },
+  {
+    "canonical": "Supervised Learning",
+    "type": "method",
+    "aliases": ["Supervised Machine Learning"]
+  },
+  {
+    "canonical": "Contrastive Learning",
+    "type": "method",
+    "aliases": ["Contrastive Representation Learning"]
+  },
+  {
+    "canonical": "Knowledge Distillation",
+    "type": "method",
+    "aliases": ["KD", "Teacher-Student Learning", "Model Distillation"]
+  },
+  {
+    "canonical": "Pruning",
+    "type": "method",
+    "aliases": ["Neural Network Pruning", "Model Pruning", "Weight Pruning"]
+  },
+  {
+    "canonical": "Quantization",
+    "type": "method",
+    "aliases": ["Model Quantization", "Neural Network Quantization", "Weight Quantization"]
+  },
+  {
+    "canonical": "Low-Rank Adaptation",
+    "type": "method",
+    "aliases": ["LoRA", "Low Rank Adaptation"]
+  },
+  {
+    "canonical": "Quantized Low-Rank Adaptation",
+    "type": "method",
+    "aliases": ["QLoRA", "Quantized LoRA"]
+  },
+  {
+    "canonical": "Prompt Engineering",
+    "type": "method",
+    "aliases": ["Prompt Design", "Prompting"]
+  },
+  {
+    "canonical": "Chain-of-Thought Prompting",
+    "type": "method",
+    "aliases": ["CoT", "Chain of Thought Prompting", "Chain-of-Thought"]
+  },
+  {
+    "canonical": "Reinforcement Learning from Human Feedback",
+    "type": "method",
+    "aliases": ["RLHF", "Reinforcement Learning From Human Feedback"]
+  },
+  {
+    "canonical": "Direct Preference Optimization",
+    "type": "method",
+    "aliases": ["DPO"]
+  },
+  {
+    "canonical": "Proximal Policy Optimization",
+    "type": "method",
+    "aliases": ["PPO"]
+  },
+  {
+    "canonical": "Deep Q-Network",
+    "type": "method",
+    "aliases": ["DQN", "Deep Q Network"]
+  },
+  {
+    "canonical": "Q-Learning",
+    "type": "method",
+    "aliases": ["Q Learning", "Tabular Q-Learning"]
+  },
+  {
+    "canonical": "Support Vector Machine",
+    "type": "method",
+    "aliases": ["SVM", "Support Vector Machines", "Support Vector Classifier", "SVC"]
+  },
+  {
+    "canonical": "Random Forest",
+    "type": "method",
+    "aliases": ["RF", "Random Forest Classifier", "Random Forest Regression"]
+  },
+  {
+    "canonical": "Gradient Boosting",
+    "type": "method",
+    "aliases": ["Gradient Boosted Trees", "Gradient Boosting Machine", "GBM"]
+  },
+  {
+    "canonical": "Extreme Gradient Boosting",
+    "type": "method",
+    "aliases": ["XGBoost", "XGB", "XG Boost"]
+  },
+  {
+    "canonical": "K-Means Clustering",
+    "type": "method",
+    "aliases": ["K-Means", "K Means", "KMeans"]
+  },
+  {
+    "canonical": "Principal Component Analysis",
+    "type": "method",
+    "aliases": ["PCA"]
+  },
+  {
+    "canonical": "Linear Regression",
+    "type": "method",
+    "aliases": ["Ordinary Least Squares Regression", "OLS Regression"]
+  },
+  {
+    "canonical": "Logistic Regression",
+    "type": "method",
+    "aliases": ["Logistic Model", "Logit Regression"]
+  },
+  {
+    "canonical": "Decision Tree",
+    "type": "method",
+    "aliases": ["Decision Tree Classifier", "Decision Tree Regression", "DT"]
+  },
+  {
+    "canonical": "Naive Bayes",
+    "type": "method",
+    "aliases": ["Naive Bayes Classifier", "NB"]
+  },
+  {
+    "canonical": "K-Nearest Neighbors",
+    "type": "method",
+    "aliases": ["KNN", "K-NN", "Nearest Neighbor Classification"]
+  },
+  {
+    "canonical": "BERT",
+    "type": "model",
+    "aliases": ["Bidirectional Encoder Representations from Transformers", "BERT Model"]
+  },
+  {
+    "canonical": "RoBERTa",
+    "type": "model",
+    "aliases": ["Robustly Optimized BERT Approach", "RoBERTa Model"]
+  },
+  {
+    "canonical": "DistilBERT",
+    "type": "model",
+    "aliases": ["Distilled BERT", "Distil BERT"]
+  },
+  {
+    "canonical": "ALBERT",
+    "type": "model",
+    "aliases": ["A Lite BERT", "A Lite BERT for Self-Supervised Learning of Language Representations"]
+  },
+  {
+    "canonical": "T5",
+    "type": "model",
+    "aliases": ["Text-to-Text Transfer Transformer", "T5 Model"]
+  },
+  {
+    "canonical": "BART",
+    "type": "model",
+    "aliases": ["Bidirectional and Auto-Regressive Transformers", "BART Model"]
+  },
+  {
+    "canonical": "GPT",
+    "type": "model_family",
+    "aliases": ["Generative Pre-trained Transformer", "Generative Pretrained Transformer"]
+  },
+  {
+    "canonical": "LLaMA",
+    "type": "model_family",
+    "aliases": ["Large Language Model Meta AI", "LLaMA Models", "Llama"]
+  },
+  {
+    "canonical": "Mistral",
+    "type": "model_family",
+    "aliases": ["Mistral Models", "Mistral Language Model"]
+  },
+  {
+    "canonical": "Gemini",
+    "type": "model_family",
+    "aliases": ["Gemini Models", "Google Gemini"]
+  },
+  {
+    "canonical": "CLIP",
+    "type": "model",
+    "aliases": ["Contrastive Language-Image Pre-training", "Contrastive Language Image Pretraining"]
+  },
+  {
+    "canonical": "DINO",
+    "type": "model",
+    "aliases": ["Self-Distillation with No Labels", "DINO Model"]
+  },
+  {
+    "canonical": "Stable Diffusion",
+    "type": "model",
+    "aliases": ["Stable Diffusion Model", "Latent Diffusion Model"]
+  },
+  {
+    "canonical": "ResNet",
+    "type": "model_family",
+    "aliases": ["Residual Network", "Residual Neural Network"]
+  },
+  {
+    "canonical": "VGG",
+    "type": "model_family",
+    "aliases": ["Visual Geometry Group Network", "VGG Network"]
+  },
+  {
+    "canonical": "DenseNet",
+    "type": "model_family",
+    "aliases": ["Densely Connected Convolutional Network", "Dense Convolutional Network"]
+  },
+  {
+    "canonical": "EfficientNet",
+    "type": "model_family",
+    "aliases": ["Efficient Convolutional Neural Network"]
+  },
+  {
+    "canonical": "YOLO",
+    "type": "model_family",
+    "aliases": ["You Only Look Once", "YOLO Object Detector"]
+  },
+  {
+    "canonical": "F1 Score",
+    "type": "metric",
+    "aliases": ["F1", "F1-score", "F1-scores", "F1 scores", "F-measure", "F measure", "F1-measure", "F_1 score"]
+  },
+  {
+    "canonical": "Accuracy",
+    "type": "metric",
+    "aliases": ["Classification Accuracy", "Acc"]
+  },
+  {
+    "canonical": "Precision",
+    "type": "metric",
+    "aliases": ["Positive Predictive Value", "PPV"]
+  },
+  {
+    "canonical": "Recall",
+    "type": "metric",
+    "aliases": ["Sensitivity", "True Positive Rate", "TPR"]
+  },
+  {
+    "canonical": "Specificity",
+    "type": "metric",
+    "aliases": ["True Negative Rate", "TNR"]
+  },
+  {
+    "canonical": "Area Under the ROC Curve",
+    "type": "metric",
+    "aliases": ["ROC-AUC", "AUC-ROC", "AUROC", "AUC"]
+  },
+  {
+    "canonical": "Area Under the Precision-Recall Curve",
+    "type": "metric",
+    "aliases": ["PR-AUC", "AUPRC", "Average Precision"]
+  },
+  {
+    "canonical": "Mean Average Precision",
+    "type": "metric",
+    "aliases": ["mAP", "Mean AP"]
+  },
+  {
+    "canonical": "Mean Reciprocal Rank",
+    "type": "metric",
+    "aliases": ["MRR"]
+  },
+  {
+    "canonical": "Normalized Discounted Cumulative Gain",
+    "type": "metric",
+    "aliases": ["NDCG", "nDCG"]
+  },
+  {
+    "canonical": "Mean Squared Error",
+    "type": "metric",
+    "aliases": ["MSE", "Mean-Squared Error"]
+  },
+  {
+    "canonical": "Root Mean Squared Error",
+    "type": "metric",
+    "aliases": ["RMSE", "Root-Mean-Squared Error"]
+  },
+  {
+    "canonical": "Mean Absolute Error",
+    "type": "metric",
+    "aliases": ["MAE", "Mean-Absolute Error"]
+  },
+  {
+    "canonical": "R-Squared",
+    "type": "metric",
+    "aliases": ["R²", "R2", "Coefficient of Determination"]
+  },
+  {
+    "canonical": "BLEU",
+    "type": "metric",
+    "aliases": ["Bilingual Evaluation Understudy", "BLEU Score"]
+  },
+  {
+    "canonical": "ROUGE",
+    "type": "metric",
+    "aliases": ["Recall-Oriented Understudy for Gisting Evaluation", "ROUGE Score"]
+  },
+  {
+    "canonical": "BERTScore",
+    "type": "metric",
+    "aliases": ["BERT Score"]
+  },
+  {
+    "canonical": "Perplexity",
+    "type": "metric",
+    "aliases": ["PPL", "Language Model Perplexity"]
+  },
+  {
+    "canonical": "Intersection over Union",
+    "type": "metric",
+    "aliases": ["IoU", "Jaccard Index", "Jaccard Similarity"]
+  },
+  {
+    "canonical": "Peak Signal-to-Noise Ratio",
+    "type": "metric",
+    "aliases": ["PSNR", "Peak SNR"]
+  },
+  {
+    "canonical": "Structural Similarity Index Measure",
+    "type": "metric",
+    "aliases": ["SSIM", "Structural Similarity Index"]
+  },
+  {
+    "canonical": "Word Error Rate",
+    "type": "metric",
+    "aliases": ["WER"]
+  },
+  {
+    "canonical": "Character Error Rate",
+    "type": "metric",
+    "aliases": ["CER"]
+  },
+  {
+    "canonical": "Exact Match",
+    "type": "metric",
+    "aliases": ["EM", "Exact Match Score", "Exact-Match Accuracy"]
+  },
+  {
+    "canonical": "Focal Loss",
+    "type": "loss_function",
+    "aliases": ["Focal Classification Loss"]
+  },
+  {
+    "canonical": "Cross-Entropy Loss",
+    "type": "loss_function",
+    "aliases": ["Cross Entropy", "CE Loss", "Log Loss"]
+  },
+  {
+    "canonical": "Binary Cross-Entropy",
+    "type": "loss_function",
+    "aliases": ["BCE", "Binary Cross Entropy Loss", "BCE Loss"]
+  },
+  {
+    "canonical": "Mean Squared Error Loss",
+    "type": "loss_function",
+    "aliases": ["MSE Loss", "L2 Loss"]
+  },
+  {
+    "canonical": "Triplet Loss",
+    "type": "loss_function",
+    "aliases": ["Triplet Margin Loss"]
+  },
+  {
+    "canonical": "Contrastive Loss",
+    "type": "loss_function",
+    "aliases": ["Pairwise Contrastive Loss"]
+  },
+  {
+    "canonical": "Kullback-Leibler Divergence",
+    "type": "method",
+    "aliases": ["KL Divergence", "KLD", "Relative Entropy"]
+  },
+  {
+    "canonical": "Adam",
+    "type": "optimizer",
+    "aliases": ["Adaptive Moment Estimation", "Adam Optimizer"]
+  },
+  {
+    "canonical": "AdamW",
+    "type": "optimizer",
+    "aliases": ["Adam with Decoupled Weight Decay", "AdamW Optimizer"]
+  },
+  {
+    "canonical": "Stochastic Gradient Descent",
+    "type": "optimizer",
+    "aliases": ["SGD", "Stochastic Gradient Descent Optimizer"]
+  },
+  {
+    "canonical": "RMSprop",
+    "type": "optimizer",
+    "aliases": ["RMS Prop", "Root Mean Square Propagation"]
+  },
+  {
+    "canonical": "Adagrad",
+    "type": "optimizer",
+    "aliases": ["Adaptive Gradient Algorithm"]
+  },
+  {
+    "canonical": "Learning Rate",
+    "type": "hyperparameter",
+    "aliases": ["LR", "Step Size"]
+  },
+  {
+    "canonical": "Batch Size",
+    "type": "hyperparameter",
+    "aliases": ["Mini-Batch Size", "Minibatch Size"]
+  },
+  {
+    "canonical": "Dropout",
+    "type": "method",
+    "aliases": ["Dropout Regularization", "Neural Network Dropout"]
+  },
+  {
+    "canonical": "Weight Decay",
+    "type": "method",
+    "aliases": ["L2 Regularization", "Weight Decay Regularization"]
+  },
+  {
+    "canonical": "Tokenization",
+    "type": "method",
+    "aliases": ["Text Tokenization", "Tokenisation"]
+  },
+  {
+    "canonical": "Byte Pair Encoding",
+    "type": "method",
+    "aliases": ["BPE", "Byte-Pair Encoding"]
+  },
+  {
+    "canonical": "WordPiece",
+    "type": "method",
+    "aliases": ["WordPiece Tokenization", "WordPiece Tokenizer"]
+  },
+  {
+    "canonical": "SentencePiece",
+    "type": "method",
+    "aliases": ["SentencePiece Tokenizer", "SentencePiece Tokenization"]
+  },
+  {
+    "canonical": "Named Entity Recognition",
+    "type": "task",
+    "aliases": ["NER", "Named-Entity Recognition"]
+  },
+  {
+    "canonical": "Relation Extraction",
+    "type": "task",
+    "aliases": ["RE", "Relationship Extraction"]
+  },
+  {
+    "canonical": "Sentiment Analysis",
+    "type": "task",
+    "aliases": ["Opinion Mining", "Sentiment Classification"]
+  },
+  {
+    "canonical": "Text Classification",
+    "type": "task",
+    "aliases": [
+      "Text Categorization",
+      "Text Document Classification",
+      "Document Categorization",
+      "Short Text Classification"
+    ]
+  },
+  {
+    "canonical": "Text Summarization",
+    "type": "task",
+    "aliases": ["Automatic Summarization", "Document Summarization"]
+  },
+  {
+    "canonical": "Machine Translation",
+    "type": "task",
+    "aliases": ["MT", "Automatic Translation", "Neural Machine Translation"]
+  },
+  {
+    "canonical": "Question Answering",
+    "type": "task",
+    "aliases": ["QA", "Question-Answering", "open-domain question answering"]
+  },
+  {
+    "canonical": "Information Retrieval",
+    "type": "task",
+    "aliases": ["IR", "Document Retrieval"]
+  },
+  {
+    "canonical": "Semantic Search",
+    "type": "task",
+    "aliases": ["Embedding-Based Search", "Semantic Retrieval"]
+  },
+  {
+    "canonical": "Recommendation System",
+    "type": "task",
+    "aliases": [
+      "Recommender System",
+      "Recommender Systems",
+      "Recommendation Systems",
+      "Recommendation",
+      "Recommendations",
+      "RS"
+    ]
+  },
+  {
+    "canonical": "Object Detection",
+    "type": "task",
+    "aliases": ["Object Localization and Classification"]
+  },
+  {
+    "canonical": "Semantic Segmentation",
+    "type": "task",
+    "aliases": ["Pixel-Level Classification", "Semantic Image Segmentation"]
+  },
+  {
+    "canonical": "Image Classification",
+    "type": "task",
+    "aliases": ["Visual Classification"]
+  },
+  {
+    "canonical": "Image Generation",
+    "type": "task",
+    "aliases": ["Text-to-Image Generation", "Generative Image Synthesis"]
+  },
+  {
+    "canonical": "Speech Recognition",
+    "type": "task",
+    "aliases": ["Automatic Speech Recognition", "ASR", "Speech-to-Text"]
+  },
+  {
+    "canonical": "Text-to-Speech",
+    "type": "task",
+    "aliases": ["TTS", "Speech Synthesis"]
+  },
+  {
+    "canonical": "Topic Modeling",
+    "type": "task",
+    "aliases": ["Topic Modelling", "Probabilistic Topic Modeling"]
+  },
+  {
+    "canonical": "Anomaly Detection",
+    "type": "task",
+    "aliases": ["Outlier Detection", "Novelty Detection"]
+  },
+  {
+    "canonical": "Time Series Forecasting",
+    "type": "task",
+    "aliases": ["Time-Series Prediction", "Temporal Forecasting"]
+  },
+  {
+    "canonical": "SemanticKITTI",
+    "type": "dataset",
+    "aliases": ["Semantic KITTI", "SemanticKITTI Dataset"]
+  },
+  {
+    "canonical": "ImageNet",
+    "type": "dataset",
+    "aliases": ["ImageNet Dataset", "ILSVRC"]
+  },
+  {
+    "canonical": "CIFAR-10",
+    "type": "dataset",
+    "aliases": ["CIFAR10", "CIFAR 10"]
+  },
+  {
+    "canonical": "CIFAR-100",
+    "type": "dataset",
+    "aliases": ["CIFAR100", "CIFAR 100"]
+  },
+  {
+    "canonical": "MNIST",
+    "type": "dataset",
+    "aliases": ["MNIST Dataset", "Modified National Institute of Standards and Technology Dataset"]
+  },
+  {
+    "canonical": "COCO",
+    "type": "dataset",
+    "aliases": ["MS COCO", "Microsoft COCO", "Common Objects in Context"]
+  },
+  {
+    "canonical": "Pascal VOC",
+    "type": "dataset",
+    "aliases": ["PASCAL Visual Object Classes", "VOC Dataset"]
+  },
+  {
+    "canonical": "SQuAD",
+    "type": "dataset",
+    "aliases": ["Stanford Question Answering Dataset", "SQuAD Dataset"]
+  },
+  {
+    "canonical": "GLUE",
+    "type": "dataset",
+    "aliases": ["General Language Understanding Evaluation", "GLUE Benchmark"]
+  },
+  {
+    "canonical": "SuperGLUE",
+    "type": "dataset",
+    "aliases": ["Super GLUE", "SuperGLUE Benchmark"]
+  },
+  {
+    "canonical": "WikiText",
+    "type": "dataset",
+    "aliases": ["WikiText Dataset", "WikiText-2", "WikiText-103"]
+  },
+  {
+    "canonical": "Common Crawl",
+    "type": "dataset",
+    "aliases": ["CC", "CommonCrawl Corpus"]
+  },
+  {
+    "canonical": "MMLU",
+    "type": "dataset",
+    "aliases": ["Massive Multitask Language Understanding", "MMLU Benchmark"]
+  },
+  {
+    "canonical": "HumanEval",
+    "type": "dataset",
+    "aliases": ["HumanEval Benchmark", "OpenAI HumanEval"]
+  },
+  {
+    "canonical": "WMT",
+    "type": "dataset",
+    "aliases": ["Workshop on Machine Translation", "WMT Benchmark"]
+  },
+  {
+    "canonical": "MS MARCO",
+    "type": "dataset",
+    "aliases": ["Microsoft MARCO", "MSMARCO"]
+  },
+  {
+    "canonical": "BEIR",
+    "type": "dataset",
+    "aliases": ["Benchmarking IR", "BEIR Benchmark"]
+  },
+  {
+    "canonical": "Natural Questions",
+    "type": "dataset",
+    "aliases": ["NQ", "Natural Questions Dataset"]
+  },
+  {
+    "canonical": "Word2Vec",
+    "type": "method",
+    "aliases": ["Word2Vec Embeddings", "Word2Vec Model"]
+  },
+  {
+    "canonical": "GloVe",
+    "type": "method",
+    "aliases": ["Global Vectors for Word Representation", "GloVe Embeddings"]
+  },
+  {
+    "canonical": "TF-IDF",
+    "type": "method",
+    "aliases": ["TF IDF","TF.IDF","TFIDF", "Term Frequency-Inverse Document Frequency", "Term Frequency Inverse Document Frequency"]
+  },
+  {
+    "canonical": "BM25",
+    "type": "method",
+    "aliases": ["Okapi BM25", "Best Matching 25"]
+  },
+  {
+    "canonical": "Cosine Similarity",
+    "type": "method",
+    "aliases": ["Cosine Distance Similarity", "Cosine Metric"]
+  },
+  {
+    "canonical": "Euclidean Distance",
+    "type": "method",
+    "aliases": ["L2 Distance", "Euclidean Metric"]
+  },
+  {
+    "canonical": "Jaccard Similarity",
+    "type": "method",
+    "aliases": ["Jaccard Index", "Intersection over Union"]
+  },
+  {
+    "canonical": "Knowledge Graph",
+    "type": "concept",
+    "aliases": ["KG", "Knowledge Graphs"]
+  },
+  {
+    "canonical": "Knowledge Graph Completion",
+    "type": "task",
+    "aliases": ["KGC", "Link Prediction in Knowledge Graphs"]
+  },
+  {
+    "canonical": "Explainable AI",
+    "type": "field",
+    "aliases": ["XAI", "Explainable Artificial Intelligence"]
+  },
+  {
+    "canonical": "Interpretability",
+    "type": "concept",
+    "aliases": ["Model Interpretability", "ML Interpretability"]
+  },
+  {
+    "canonical": "Adversarial Robustness",
+    "type": "concept",
+    "aliases": ["Robustness to Adversarial Attacks", "Adversarial Resistance"]
+  },
+  {
+    "canonical": "Differential Privacy",
+    "type": "method",
+    "aliases": ["DP", "Differentially Private Learning"]
+  },
+  {
+    "canonical": "Hyperparameter Optimization",
+    "type": "task",
+    "aliases": ["HPO", "Hyperparameter Tuning", "Hyperparameter Search"]
+  },
+  {
+    "canonical": "Neural Architecture Search",
+    "type": "method",
+    "aliases": ["NAS", "Automated Neural Architecture Search"]
+  },
+  {
+    "canonical": "Monte Carlo Tree Search",
+    "type": "method",
+    "aliases": ["MCTS"]
+  },
+  {
+    "canonical": "Expectation-Maximization",
+    "type": "method",
+    "aliases": ["EM Algorithm", "Expectation Maximization Algorithm"]
+  },
+  {
+    "canonical": "Markov Decision Process",
+    "type": "concept",
+    "aliases": ["MDP", "Markov Decision Processes"]
+  },
+  {
+    "canonical": "Bayesian Optimization",
+    "type": "method",
+    "aliases": ["BO", "Bayesian Hyperparameter Optimization"]
+  },
+  {
+    "canonical": "Optical Character Recognition",
+    "type": "task",
+    "aliases": ["OCR", "Text Recognition"]
+  },
+  {
+    "canonical": "Point Cloud",
+    "type": "concept",
+    "aliases": ["3D Point Cloud", "Point-Cloud Data"]
+  },
+  {
+    "canonical": "LiDAR",
+    "type": "technology",
+    "aliases": ["Lidar", "Light Detection and Ranging", "Laser Imaging Detection and Ranging"]
+  },
+  {
+    "canonical": "Sparse Convolution",
+    "type": "method",
+    "aliases": ["Sparse Convolutional Neural Network", "Sparse CNN"]
+  },
+  {
+    "canonical": "Multimodal Learning",
+    "type": "field",
+    "aliases": ["Multimodal Machine Learning", "Multi-Modal Learning"]
+  },
+  {
+    "canonical": "Embedding",
+    "type": "concept",
+    "aliases": ["Vector Embedding", "Dense Representation", "Feature Embedding"]
+  },
+  {
+    "canonical": "Vector Database",
+    "type": "technology",
+    "aliases": ["Vector DB", "Vector Store", "Embedding Database"]
+  },
+  {
+    "canonical": "PostgreSQL",
+    "type": "technology",
+    "aliases": ["Postgres", "PostgreSQL Database"]
+  },
+  {
+    "canonical": "PyTorch",
+    "type": "technology",
+    "aliases": ["PyTorch Framework", "Torch"]
+  },
+  {
+    "canonical": "TensorFlow",
+    "type": "technology",
+    "aliases": ["TF", "TensorFlow Framework"]
+  },
+  {
+    "canonical": "Hugging Face Transformers",
+    "type": "technology",
+    "aliases": ["Transformers Library", "HF Transformers"]
+  },
+  {
+    "canonical": "Docker",
+    "type": "technology",
+    "aliases": ["Docker Engine", "Containerization with Docker"]
+  },
+  {
+    "canonical": "FastAPI",
+    "type": "technology",
+    "aliases": ["Fast API", "FastAPI Framework"]
+  },
+  {
+    "canonical": "Text-to-Image Retrieval",
+    "type": "task",
+    "aliases": ["Text to Image Retrieval", "Text-Based Image Retrieval"]
+  },
+  {
+    "canonical": "Image-to-Text Retrieval",
+    "type": "task",
+    "aliases": ["Image to Text Retrieval", "Image-Based Text Retrieval"]
+  },
+  {
+    "canonical": "Query-Focused Summarization",
+    "type": "task",
+    "aliases": ["Query Focused Summarization", "Query-Based Summarization"]
+  },
+  {
+    "canonical": "Slot Filling",
+    "type": "task",
+    "aliases": ["Slot-Filling", "Semantic Slot Filling"]
+  },
+  {
+    "canonical": "Dialogue Generation",
+    "type": "task",
+    "aliases": ["Dialog Generation", "Dialogue Response Generation", "Dialog Generation System", "Response Generation", "Dialogue Response Generation"]
+  },
+  {
+    "canonical": "Fact Verification",
+    "type": "task",
+    "aliases": ["Fact-Checking", "Fact Checking", "Fact Verification", "Claim Verification", "Automatic Claim Verification"]
+  },
+  {
+    "canonical": "Zero-Shot Classification",
+    "type": "task",
+    "aliases": ["Zero Shot Classification"]
+  },
+  {
+    "canonical": "Zero-Shot Text Classification",
+    "type": "task",
+    "aliases": ["Zero Shot Text Classification"]
+  },
+  {
+    "canonical": "Zero-Shot Image Classification",
+    "type": "task",
+    "aliases": ["Zero Shot Image Classification"]
+  },
+  {
+    "canonical": "Multiclass Classification",
+    "type": "task",
+    "aliases": ["Multi-Class Classification", "Multi Class Classification"]
+  },
+  {
+    "canonical": "Multi-Label Classification",
+    "type": "task",
+    "aliases": ["Multi Label Classification", "Multi-Label Text Classification"]
+  },
+  {
+    "canonical": "Hierarchical Text Classification",
+    "type": "task",
+    "aliases": ["Hierarchical Document Classification", "Hierarchical Document Categorization"]
+  },
+  {
+    "canonical": "Document-Level Classification",
+    "type": "task",
+    "aliases": ["Document Level Classification", "Document Categorization", "Text Document Classification"]
+  },
+  {
+    "canonical": "Aspect-Based Sentiment Analysis",
+    "type": "task",
+    "aliases": ["ABSA", "Aspect-Based Sentiment Classification", "Aspect-Based Opinion Mining", "Fine-Grained Aspect-Based Sentiment Analysis"]
+  },
+  {
+    "canonical": "Semantic Textual Similarity",
+    "type": "task",
+    "aliases": ["STS", "Semantic Text Similarity", "Semantic Similarity"]
+  },
+  {
+    "canonical": "Table-Text Retrieval",
+    "type": "task",
+    "aliases": ["Table Text Retrieval", "Table-to-Text Retrieval"]
+  },
+  {
+    "canonical": "Table Retrieval",
+    "type": "task",
+    "aliases": ["Table-Based Retrieval"]
+  },
+  {
+    "canonical": "Generative Information Retrieval",
+    "type": "task",
+    "aliases": ["Generative Retrieval", "Generative Document Retrieval"]
+  },
+  {
+    "canonical": "Noun-Modifier Relation Classification",
+    "type": "task",
+    "aliases": ["Classifying Noun-Modifier Relations", "Classifying Semantic Relations in Noun-Modifier Pairs"]
+  },
+  {
+    "canonical": "Emotion Recognition",
+    "type": "task",
+    "aliases": ["Emotion Detection", "Emotion Classification"]
+  },
+  {
+    "canonical": "Multi-Document Summarization",
+    "type": "task",
+    "aliases": ["Multi Document Summarization", "Multi-Document Text Summarization"]
+  },
+  {
+    "canonical": "Single-Document Summarization",
+    "type": "task",
+    "aliases": ["Single Document Summarization", "Single-Document Text Summarization"]
+  },
+  {
+    "canonical": "Abstractive Summarization",
+    "type": "task",
+    "aliases": ["Abstractive Text Summarization", "Long-Form Abstractive Text Summarization"]
+  },
+  {
+    "canonical": "Extractive Summarization",
+    "type": "task",
+    "aliases": ["Extractive Text Summarization", "Extractive Document Summarization"]
+  },
+  {
+    "canonical": "Short Text Summarization",
+    "type": "task",
+    "aliases": ["Short-Text Summarization"]
+  },
+  {
+    "canonical": "Event Extraction",
+    "type": "task",
+    "aliases": ["Document-Level Event Extraction", "Event Information Extraction"]
+  },
+  {
+    "canonical": "Text-Based Audio Retrieval",
+    "type": "task",
+    "aliases": ["Text to Audio Retrieval", "Text-Audio Retrieval"]
+  },
+  {
+    "canonical": "Short Text Clustering",
+    "type": "task",
+    "aliases": ["Short-Text Clustering"]
+  },
+  {
+    "canonical": "Query Autocomplete",
+    "type": "task",
+    "aliases": ["Query Auto-Completion", "Query Auto Completion", "Search Query Autocomplete"]
+  },
+  {
+    "canonical": "Sequential Sentence Classification",
+    "type": "task",
+    "aliases": ["Sequential Sentence Categorization"]
+  },
+  {
+    "canonical": "Machine Translation Evaluation",
+    "type": "task",
+    "aliases": ["MT Evaluation", "Automatic Machine Translation Evaluation"]
+  },
+  {
+    "canonical": "Concept Normalization",
+    "type": "task",
+    "aliases": ["Concept Normalisation", "Medical Concept Normalization", "Medical Concept Normalisation"]
+  },
+  {
+    "canonical": "Entity Linking",
+    "type": "task",
+    "aliases": ["End-to-End Entity Linking", "Named Entity Linking"]
+  },
+  {
+    "canonical": "Short Text Retrieval",
+    "type": "task",
+    "aliases": ["Short-Text Retrieval"]
+  },
+  {
+    "canonical": "Personalized Text Generation",
+    "type": "task",
+    "aliases": ["Personalised Text Generation", "Personalized Natural Language Generation"]
+  },
+  {
+    "canonical": "Propaganda Detection",
+    "type": "task",
+    "aliases": ["Detection of Propaganda Techniques in News Articles", "Propaganda Technique Detection"]
+  },
+  {
+    "canonical": "Information and News Credibility Assessment",
+    "type": "task",
+    "aliases": ["Fake News Credibility Evaluation", "News Credibility Assessment", "Information Credibility Assessment"]
+  },
+  {
+    "canonical": "Depression Symptom Detection",
+    "type": "task",
+    "aliases": ["Search for Symptoms of Depression", "Depression Symptoms Detection"]
+  },
+  {
+    "canonical": "Code Retrieval",
+    "type": "task",
+    "aliases": ["Code Search", "Source Code Retrieval"]
+  },
+  {
+    "canonical": "Table-to-Text Generation",
+    "type": "task",
+    "aliases": ["Table to Text Generation", "Table Content Generation"]
+  },
+  {
+    "canonical": "Knowledge Graph Matching",
+    "type": "task",
+    "aliases": ["KG Matching", "Knowledge Graph Alignment"]
+  },
+  {
+    "canonical": "Knowledge Graph Completion",
+    "type": "task",
+    "aliases": ["KG Completion", "Knowledge Graph Link Prediction"]
+  },
+  {
+    "canonical": "Fact Extraction",
+    "type": "task",
+    "aliases": ["Fact Information Extraction"]
+  },
+  {
+    "canonical": "Fact Retrieval",
+    "type": "task",
+    "aliases": ["Fact-Based Retrieval"]
+  },
+  {
+    "canonical": "Relevance Assessment",
+    "type": "task",
+    "aliases": ["Relevance Labelling", "Relevance Labeling", "Relevance Judgement", "Relevance Judgment"]
+  },
+  {
+    "canonical": "Conversational Search",
+    "type": "task",
+    "aliases": ["Conversation Context-Aware Search", "Conversational Information Seeking"]
+  },
+  {
+    "canonical": "Neural Topic Modeling",
+    "type": "task",
+    "aliases": ["Neural Topic Models", "Neural Topic Modelling"]
+  },
+  {
+    "canonical": "Relational Triple Extraction",
+    "type": "task",
+    "aliases": ["Relational Triplet Extraction", "Few-Shot Relational Triple Extraction"]
+  },
+  {
+    "canonical": "Open Relation Extraction",
+    "type": "task",
+    "aliases": ["Open-Relation Extraction"]
+  },
+  {
+    "canonical": "Open Information Extraction",
+    "type": "task",
+    "aliases": ["Open IE", "OpenIE"]
+  },
+  {
+    "canonical": "Playlist Discovery",
+    "type": "task",
+    "aliases": ["Playlist Prediction", "Playlist Recommendation"]
+  },
+  {
+    "canonical": "Citation Recommendation",
+    "type": "task",
+    "aliases": ["Local Citation Recommendation", "Citation Recommender"]
+  },
+  {
+    "canonical": "Price Forecasting",
+    "type": "task",
+    "aliases": ["Price Prediction", "Price Time-Series Forecasting"]
+  },
+  {
+    "canonical": "Knowledge Extraction",
+    "type": "task",
+    "aliases": ["Knowledge Discovery from Text"]
+  },
+  {
+    "canonical": "Reranking",
+    "type": "task",
+    "aliases": ["Re-Ranking", "Re-ranking", "Passage Reranking", "Passage Re-Ranking"]
+  },
+  {
+    "canonical": "Multi-Hop Reasoning",
+    "type": "task",
+    "aliases": ["Multi-Hop Inference", "Multi Hop Reasoning"]
+  },
+  {
+    "canonical": "Word Translation",
+    "type": "task",
+    "aliases": ["Word-Level Translation", "Word Translation Task"]
+  },
+  {
+    "canonical": "Topic Detection",
+    "type": "task",
+    "aliases": ["Topic Discovery", "Topic Detection and Tracking"]
+  },
+  {
+    "canonical": "Community Question Answering",
+    "type": "task",
+    "aliases": ["Community QA", "Community-Based Question Answering"]
+  },
+  {
+    "canonical": "Word Analogy",
+    "type": "task",
+    "aliases": ["Word Analogies", "Analogy Questions"]
+  },
+  {
+    "canonical": "Image Recognition",
+    "type": "task",
+    "aliases": ["Visual Recognition"]
+  },
+  {
+    "canonical": "Unified Retrieval",
+    "type": "task",
+    "aliases": ["Unified Information Retrieval"]
+  }
+]
