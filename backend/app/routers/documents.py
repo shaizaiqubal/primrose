@@ -1,15 +1,16 @@
-import logging
-
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from backend.app.database import SessionLocal
 from backend.app.models import Documents, User, Bookmark
 from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse
 from backend.services.embed import embed_content
-from backend.services.queue_docs import queue_documents
 from backend.services.reranker import RankedDocument
 from backend.services.search import get_document_service, search
+from backend.services.entities import (
+    get_document_entity_ids,
+    process_uploaded_document,
+)
 from backend.services.vector_store import delete_embedding, insert_embedding
 from backend.app.routers.auth import get_current_user
 
@@ -47,8 +48,7 @@ def post_documents(
         db.commit()
         db.refresh(entry)
     
-    message_id = queue_documents(entry)
-    logging.info("Published message %s", message_id)
+    process_uploaded_document(entry)
     return entry
 
 
@@ -60,8 +60,11 @@ def get_documents() -> list[Documents]:
 
 
 @router.get("/search", response_model=list[RankedDocumentResponse])
-def search_documents(query: str) -> list[RankedDocument]:
-    return search(query)
+def search_documents(
+    query: str,
+    entities: list[int] | None = Query(default=None),
+) -> list[RankedDocument]:
+    return search(query, entity_ids=entities)
 
 
 @router.get("/{id}", response_model=DocumentResponse)
@@ -184,7 +187,11 @@ def embed_document(id: int) -> dict:
         result = _get_document_or_404(db, id)
         try:
             embedding = embed_content(title=result.title, abstract=result.abstract)
-            insert_embedding(result, embedding)
+            insert_embedding(
+                result,
+                embedding,
+                entity_ids=get_document_entity_ids(result.id),
+            )
             result.embedded = True
             db.commit()
             db.refresh(result)

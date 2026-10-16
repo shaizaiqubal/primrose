@@ -34,6 +34,25 @@ class RankedDocumentResponse(BaseModel):
         "from_attributes": True
     }
 
+class EntityResponse(BaseModel):
+    id: int
+    canonical_name: str
+    type: str
+    aliases: list[str]
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class EntityPageResponse(BaseModel):
+    items: list[EntityResponse]
+    total: int
+    page: int
+    page_size: int
+
+class EntitySearchResult(EntityResponse):
+    score: float
+
 class RecommendedPaperResponse(BaseModel):
     id: int
     arxiv_id: str | None = None

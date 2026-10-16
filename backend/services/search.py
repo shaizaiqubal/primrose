@@ -51,10 +51,13 @@ def fetch_candidates(related_ids: Sequence[object]) -> list[Documents]:
     )
     return documents
 
-def search(query: str) -> list[RankedDocument]:
+def search(
+    query: str,
+    entity_ids: Sequence[int] | None = None,
+) -> list[RankedDocument]:
     query_embed = embed_content(abstract=query)
     try:
-        related_ids = query_documents(query_embed)
+        related_ids = query_documents(query_embed, entity_ids=entity_ids)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

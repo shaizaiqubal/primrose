@@ -1,7 +1,16 @@
 import logging
+from collections.abc import Sequence
 from typing import cast
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointIdsList, PointStruct, VectorParams
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointIdsList,
+    PointStruct,
+    VectorParams,
+)
 from backend.app.config import (
     QDRANT_API_KEY,
     QDRANT_COLLECTION_NAME,
@@ -21,20 +30,21 @@ client = QdrantClient(
 
 COLLECTION_NAME = QDRANT_COLLECTION_NAME
 
-def ensure_collection(vector_size: int = 384):
+def ensure_collection(vector_size: int = 384, name: str = COLLECTION_NAME):
     try:
         collections = client.get_collections()
         existing = {c.name for c in collections.collections}
-        if COLLECTION_NAME not in existing:
+        if name not in existing:
             client.create_collection(
-                collection_name=COLLECTION_NAME,
+                collection_name=name,
                 vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
             )
+            logger.info("Initailized collection '%s'", name)
     except Exception as exc:
-        logger.exception("Failed to ensure Qdrant collection '%s'", COLLECTION_NAME)
+        logger.exception("Failed to ensure Qdrant collection '%s'", name)
         raise RuntimeError("Unable to initialize vector store collection") from exc
 
-def insert_embedding(result, vector):
+def insert_embedding(result, vector, entity_ids: list[int] | None = None):
     try:
         ensure_collection()
         client.upsert(
@@ -48,6 +58,7 @@ def insert_embedding(result, vector):
                         "document_id": result.id,
                         "year_published": result.year_published,
                         "authors": result.authors,
+                        "entity_ids": entity_ids or [],
                     },
                 )
             ],
@@ -105,12 +116,24 @@ def get_related_ids(id):
         raise RuntimeError("Unable to fetch related documents") from exc
 
 
-def query_documents(query_vector):
+def query_documents(query_vector, entity_ids: Sequence[int] | None = None):
     try:
         ensure_collection()
+        query_filter = None
+        if entity_ids:
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="entity_ids",
+                        match=MatchValue(value=entity_id),
+                    )
+                    for entity_id in entity_ids
+                ]
+            )
         result = client.query_points(
             collection_name=COLLECTION_NAME,
             query=query_vector,
+            query_filter=query_filter,
             limit=10,
             with_payload=False,
             with_vectors=False,

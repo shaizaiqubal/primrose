@@ -4,6 +4,7 @@ import json
 from backend.app.database import SessionLocal
 from backend.app.models import Documents
 from backend.services.embed import embed_content
+from backend.services.entities import get_document_entity_ids
 from backend.services.vector_store import insert_embedding
 from sqlalchemy import select
 from fastapi import FastAPI, Request
@@ -32,7 +33,11 @@ def process_document(document_id):
             logging.info(f"Document {document_id} already embedded")
             return
         embedding = embed_content(doc.title,doc.abstract)
-        insert_embedding(doc,embedding)
+        insert_embedding(
+            doc,
+            embedding,
+            entity_ids=get_document_entity_ids(doc.id),
+        )
         doc.embedded = True
         db.commit()
         db.refresh(doc)
