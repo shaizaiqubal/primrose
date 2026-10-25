@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.app.database import SessionLocal
-from backend.app.models import Document_Entity, Documents, Entity
+from backend.app.models import Bookmark, Document_Entity, Documents, Entity, User
 from backend.app.routers import documents as documents_router
 from backend.services import entities as entity_service
 from backend.services import vector_store
@@ -143,3 +143,79 @@ def test_qdrant_query_uses_must_condition_for_each_entity(monkeypatch):
     conditions = captured["query_filter"].must
     assert [condition.key for condition in conditions] == ["entity_ids", "entity_ids"]
     assert [condition.match.value for condition in conditions] == [12, 34]
+
+
+def test_document_entities_route_returns_related_entities(client):
+    with SessionLocal.begin() as db:
+        document = Documents(
+            title="Graph neural networks",
+            abstract="Training graph neural networks in practice.",
+            authors="Test Author",
+            year_published=2024,
+            url="https://example.com/gnn",
+        )
+        db.add(document)
+        db.flush()
+        entity = Entity(canonical_name="GNNs", type="method", aliases=[])
+        db.add(entity)
+        db.flush()
+        db.add(
+            Document_Entity(
+                document_id=document.id,
+                entity_id=entity.id,
+                extractor_version="test",
+            )
+        )
+
+    response = client.get(f"/documents/{document.id}/entities")
+
+    assert response.status_code == 200
+    assert response.json()[0]["canonical_name"] == "GNNs"
+
+
+def test_me_uploads_are_exposed_on_user_router(authenticated_client):
+    with SessionLocal.begin() as db:
+        user = db.execute(
+            __import__("sqlalchemy").select(User).where(User.email == "test-user@example.com")
+        ).scalar_one()
+        db.add(
+            Documents(
+                title="My uploaded paper",
+                abstract="Uploaded by me",
+                authors="Test Author",
+                year_published=2024,
+                url="https://example.com/uploaded",
+                uploaded_by=user.id,
+            )
+        )
+
+    response = authenticated_client.get("/me/uploads")
+
+    assert response.status_code == 200
+    assert response.json()[0]["title"] == "My uploaded paper"
+
+
+def test_bookmark_removal_uses_document_route(authenticated_client):
+    with SessionLocal.begin() as db:
+        document = Documents(
+            title="Bookmarked paper",
+            abstract="A bookmark target",
+            authors="Test Author",
+            year_published=2024,
+            url="https://example.com/bookmarked",
+        )
+        db.add(document)
+        db.flush()
+        db.add(Bookmark(user_id=1, document_id=document.id))
+
+    response = authenticated_client.delete(f"/documents/{document.id}/bookmark")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Bookmark removed successfully"
+
+
+def test_send_email_accepts_email_only_payload(client):
+    response = client.post("/auth/send_email", json={"email": "user@example.com"})
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Verification email sent!"
