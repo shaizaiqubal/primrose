@@ -4,7 +4,7 @@ import logging
 import redis
 from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from backend.app.cache import TTL, cache
 from backend.app.database import SessionLocal
@@ -70,8 +70,14 @@ def get_topic(topic_id: int) -> TopicResponse:
     return TopicResponse.model_validate(jsonable_encoder(result))
 
 
-def get_topic_papers(topic_id: int) -> list[DocumentResponse]:
-    key = f"topics:papers:{topic_id}"
+def get_topic_papers(
+    topic_id: int,
+    query: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> list[DocumentResponse]:
+    normalized_query = query.strip() if query else ""
+    key = f"topics:papers:{topic_id}:{normalized_query}:{page}:{page_size}"
     try:
         payload = cache.get(key)
     except redis.RedisError as exc:
@@ -88,9 +94,24 @@ def get_topic_papers(topic_id: int) -> list[DocumentResponse]:
             .join(Document_Topics, Documents.id == Document_Topics.id)
             .where(Document_Topics.cluster_id == topic_id)
         )
-        result = db.execute(stmt).scalars().all()
+        if normalized_query:
+            stmt = stmt.where(
+                or_(
+                    Documents.title.ilike(f"%{normalized_query}%"),
+                    Documents.abstract.ilike(f"%{normalized_query}%"),
+                )
+            )
+        result = list(
+            db.execute(
+                stmt.order_by(Documents.id)
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            ).scalars().all()
+        )
 
     if not result:
+        if normalized_query:
+            return []
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Topic is empty",

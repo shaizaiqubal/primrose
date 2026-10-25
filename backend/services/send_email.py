@@ -1,7 +1,8 @@
 from fastapi import HTTPException, status
 import smtplib
 from email.message import EmailMessage
-from backend.app.config import SENDER_PASSWORD
+from html import escape
+from backend.app.config import FRONTEND_URL, SENDER_PASSWORD
 
 SMTP_SERVER = "smtp.gmail.com"  
 SMTP_PORT = 587
@@ -16,106 +17,83 @@ VERIFICATION_EMAIL_TEMPLATE = """<!DOCTYPE html>
 <meta name="supported-color-schemes" content="dark">
 <title>Verify your email</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600&display=swap');
- 
-  @font-face {
-    font-family: 'Anvers';
-    src: url('https://YOUR-DOMAIN/fonts/Anvers-Regular.otf') format('opentype');
-    font-display: swap;
-  }
- 
+  @import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600&display=swap');
+
   body, table, td, a { -webkit-text-size-adjust: 100%; }
- 
   @media only screen and (max-width: 560px) {
-    .container { width: 100% !important; }
-    .pad { padding-left: 24px !important; padding-right: 24px !important; }
+    .email-card { width: 100% !important; }
+    .email-pad { padding-left: 24px !important; padding-right: 24px !important; }
   }
 </style>
 </head>
-<body style="margin:0; padding:0; background-color:#141C1A;">
- 
+<body style="margin:0; padding:0; background-color:#0C0E14; color:#F1EBDD; font-family:'Work Sans', Arial, sans-serif;">
 <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
-  Verify your email to finish setting up Primrose.
+  Confirm your email address to finish creating your Primrose account.
 </div>
- 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#141C1A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0C0E14;">
   <tr>
     <td align="center" style="padding:48px 16px;">
- 
-      <table role="presentation" class="container" width="520" cellpadding="0" cellspacing="0" border="0"
-             style="width:520px; max-width:100%; background-color:#141C1A; border:1px solid #2C3836; border-radius:4px;">
- 
+      <table role="presentation" class="email-card" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px; max-width:100%; background-color:#12141C; border:1px solid #2A2E3D; border-radius:16px;">
         <tr>
-          <td class="pad" align="center" style="padding:44px 40px 0 40px;">
-            <div style="font-family:'Anvers', Georgia, 'Times New Roman', serif; font-size:30px; line-height:1.2; letter-spacing:0.5px; color:#F0EBE1; text-align:center;">
-              <span style="display:inline-block; width:9px; height:9px; border-radius:50%; background-color:#a38f53; vertical-align:middle; margin-right:12px; position:relative; top:-2px;"></span>Primrose
+          <td class="email-pad" style="padding:40px 40px 0;">
+            <div style="font-family:Georgia, 'Times New Roman', serif; font-size:28px; line-height:1.2; color:#F1EBDD;">
+              <span style="display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid #F0D77A; vertical-align:middle; margin-right:10px;"></span>Primrose
             </div>
           </td>
         </tr>
- 
         <tr>
-          <td class="pad" align="center" style="padding:36px 40px 0 40px; font-family:'Work Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;">
-            <h2 style="margin:0 0 16px 0; font-size:20px; font-weight:500; line-height:1.3; color:#F0EBE1; text-align:center;">
-              Welcome to Primrose
-            </h2>
-            <p style="margin:0 0 28px 0; font-size:15px; font-weight:400; line-height:1.6; color:#F0EBE1; text-align:center;">
-              Thanks for creating an account. Confirm your email address to get started.
+          <td class="email-pad" style="padding:32px 40px 0; font-family:'Work Sans', Arial, sans-serif;">
+            <h1 style="margin:0 0 16px; font-family:Georgia, 'Times New Roman', serif; font-size:28px; font-weight:400; line-height:1.2; color:#F1EBDD;">
+              Verify your email
+            </h1>
+            <p style="margin:0; font-size:18px; line-height:1.6; color:#A8AEC2;">
+              Confirm <span style="color:#F1EBDD;">{email}</span> to finish creating your Primrose account. The link works once.
             </p>
           </td>
         </tr>
- 
         <tr>
-          <td class="pad" align="center" style="padding:0 40px;">
+          <td class="email-pad" style="padding:28px 40px 0;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
               <tr>
-                <td align="center" style="background-color:#a38f53; border-radius:3px;">
-                  <a href="{verification_url}"
-                     style="display:inline-block; padding:13px 28px; font-family:'Work Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; font-size:15px; font-weight:500; color:#141C1A; text-decoration:none;">
-                    Verify your email
+                <td align="center" style="background-color:#F0D77A; border-radius:26px;">
+                  <a href="{verification_url}" style="display:inline-block; padding:0 32px; height:52px; line-height:52px; font-family:'Work Sans', Arial, sans-serif; font-size:18px; font-weight:600; color:#12141C; text-decoration:none;">
+                    Verify my email
                   </a>
                 </td>
               </tr>
             </table>
           </td>
         </tr>
- 
         <tr>
-          <td class="pad" align="center" style="padding:28px 40px 0 40px; font-family:'Work Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;">
-            <p style="margin:0; font-size:13px; line-height:1.6; color:#7A9490; text-align:center;">
-              This link expires in 24 hours.
-            </p>
-          </td>
-        </tr>
- 
-        <tr>
-          <td class="pad" align="center" style="padding:36px 40px 40px 40px; font-family:'Work Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;">
-            <div style="border-top:1px solid #2C3836; padding-top:20px; text-align:center;">
-              <p style="margin:0 0 6px 0; font-size:12px; line-height:1.6; color:#7A9490; text-align:center;">
+          <td class="email-pad" style="padding:28px 40px 40px; font-family:'Work Sans', Arial, sans-serif;">
+            <div style="border-top:1px solid #2A2E3D; padding-top:20px;">
+              <p style="margin:0 0 6px; font-size:16px; line-height:1.6; color:#A8AEC2;">
                 Button not working? Paste this link into your browser:
               </p>
-              <p style="margin:0; font-size:12px; line-height:1.6; word-break:break-all; text-align:center;">
-                <a href="{verification_url}" style="color:#a38f53; text-decoration:underline;">{verification_url}</a>
+              <p style="margin:0; font-size:16px; line-height:1.6; word-break:break-all;">
+                <a href="{verification_url}" style="color:#F0D77A; text-decoration:underline;">{verification_url}</a>
               </p>
-              <p style="margin:16px 0 0 0; font-size:12px; line-height:1.6; color:#7A9490; text-align:center;">
+              <p style="margin:20px 0 0; font-size:16px; line-height:1.6; color:#A8AEC2;">
                 If you did not create a Primrose account, you can ignore this email.
               </p>
             </div>
           </td>
         </tr>
- 
       </table>
- 
     </td>
   </tr>
 </table>
- 
 </body>
 </html>
 """
 
 
-def render_verification_email(verification_url: str) -> str:
-    return VERIFICATION_EMAIL_TEMPLATE.replace("{verification_url}", verification_url)
+def render_verification_email(verification_url: str, email: str = "you@example.com") -> str:
+    return (
+        VERIFICATION_EMAIL_TEMPLATE
+        .replace("{verification_url}", verification_url)
+        .replace("{email}", escape(email))
+    )
 def send_verification_email(email: str, token: str) -> None:
     if SENDER_PASSWORD is None:
         raise HTTPException(
@@ -123,7 +101,8 @@ def send_verification_email(email: str, token: str) -> None:
             detail="Email sender is not configured",
         )
 
-    verification_url = f"http://localhost:8000/verify-email?token={token}"
+    frontend_url = (FRONTEND_URL or "http://localhost:5173").rstrip("/")
+    verification_url = f"{frontend_url}/verify-email?token={token}"
 
     msg = EmailMessage()
     msg["Subject"] = "Verify your Primrose account"
@@ -134,7 +113,7 @@ def send_verification_email(email: str, token: str) -> None:
         f"Verify your Primrose account: {verification_url}"
     )
 
-    html_content = render_verification_email(verification_url)
+    html_content = render_verification_email(verification_url, email)
     msg.add_alternative(html_content, subtype="html")
 
     try:

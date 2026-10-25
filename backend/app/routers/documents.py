@@ -2,8 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from backend.app.database import SessionLocal
-from backend.app.models import Documents, User, Bookmark
-from backend.app.schemas import Document, DocumentResponse, RankedDocumentResponse
+from backend.app.models import Document_Entity, Documents, Entity, User, Bookmark
+from backend.app.schemas import (
+    Document,
+    DocumentResponse,
+    EntityResponse,
+    RankedDocumentResponse,
+)
 from backend.services.embed import embed_content
 from backend.services.reranker import RankedDocument
 from backend.services.search import get_document_service, search
@@ -53,9 +58,17 @@ def post_documents(
 
 
 @router.get("", response_model=list[DocumentResponse])
-def get_documents() -> list[Documents]:
+def get_documents(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=100),
+) -> list[Documents]:
     with SessionLocal() as db:
-        stmt = select(Documents).order_by(Documents.id).limit(50)
+        stmt = (
+            select(Documents)
+            .order_by(Documents.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
         return list(db.execute(stmt).scalars().all())
 
 
@@ -70,6 +83,17 @@ def search_documents(
 @router.get("/{id}", response_model=DocumentResponse)
 def get_document(id: int) -> Documents:
     return get_document_service(id)
+
+@router.get("/{document_id}/entities", response_model=list[EntityResponse])
+def get_document_entities(document_id: int) -> list[Entity]:
+    with SessionLocal() as db:
+        stmt = (
+            select(Entity)
+            .join(Document_Entity, Document_Entity.entity_id == Entity.id)
+            .where(Document_Entity.document_id == document_id)
+            .order_by(Entity.canonical_name, Entity.id)
+        )
+        return list(db.execute(stmt).scalars().all())
 
 
 @router.delete("/{id}")
@@ -154,7 +178,7 @@ def add_bookmark(
 
     return {"message": "Document bookmarked successfully"}
 
-@router.delete("/documents/{document_id}/bookmark")
+@router.delete("/{document_id}/bookmark")
 def remove_bookmark(
     document_id: int,
     current_user: User = Depends(get_current_user),

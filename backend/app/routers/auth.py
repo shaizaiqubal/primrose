@@ -8,7 +8,7 @@ from sqlalchemy import select
 from backend.app.config import JWT_SECRET
 from backend.app.database import SessionLocal
 from backend.app.models import EmailVerificationToken, RefreshToken, User
-from backend.app.schemas import UserCreate, UserResponse, RefreshTokenRequest
+from backend.app.schemas import EmailRequest, UserCreate, UserResponse, RefreshTokenRequest
 from backend.app.security import (
     create_access_token,
     create_refresh_token,
@@ -76,7 +76,7 @@ def register_user(user_data: UserCreate):
 
 
 @router.post("/send_email")
-def send_email(user_data: UserCreate):
+def send_email(user_data: EmailRequest):
     with SessionLocal() as db:
         stmt = select(User).where(User.email == user_data.email)
         user = db.execute(stmt).scalar_one_or_none()

@@ -77,6 +77,9 @@ class TopicResponse(BaseModel):
             "from_attributes": True
         }
 
+class EmailRequest(BaseModel):
+    email: EmailStr
+
 class UserCreate(BaseModel):
     email : EmailStr
     password: str
