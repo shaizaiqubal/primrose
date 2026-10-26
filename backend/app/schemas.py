@@ -94,3 +94,47 @@ class UserResponse(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+class CorpusCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    categories: list[str] = Field(min_length=1)
+    source: str = "arxiv"
+
+
+class CorpusUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    categories: list[str] | None = Field(default=None, min_length=1)
+
+
+class CorpusResponse(BaseModel):
+    id: int
+    name: str
+    source: str
+    categories: list[str]
+    last_synced: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+
+class CorpusSyncRequest(BaseModel):
+    historical_backfill: bool = False
+
+
+class CorpusSyncResponse(BaseModel):
+    id: int
+    corpus_id: int
+    status: str
+    historical_backfill: bool
+    papers_discovered: int
+    papers_inserted: int
+    existing_papers_skipped: int
+    processing_jobs_enqueued: int
+    errors_encountered: int
+    started_at: datetime | None
+    completed_at: datetime | None
+    error_details: str | None
+    upper_cutoff: datetime | None
+    created_at: datetime
+    model_config = {"from_attributes": True}

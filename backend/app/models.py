@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, Text, ForeignKey, String, JSON, UniqueConstraint
+from sqlalchemy import DateTime, Text, ForeignKey, String, JSON, UniqueConstraint, Integer
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -20,6 +20,49 @@ class Documents(Base):
     created_at : Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, default=None)
     embedded : Mapped[bool] = mapped_column(default=False)
+    submitted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    arxiv_updated_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CorpusConfig(Base):
+    __tablename__ = "corpus_configs"
+    __table_args__ = (UniqueConstraint("user_id", name="uq_corpus_config_user"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="arxiv")
+    categories: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    last_synced: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class CorpusDocument(Base):
+    __tablename__ = "corpus_documents"
+
+    corpus_id: Mapped[int] = mapped_column(ForeignKey("corpus_configs.id", ondelete="CASCADE"), primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True)
+    added_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class CorpusSync(Base):
+    __tablename__ = "corpus_syncs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    corpus_id: Mapped[int] = mapped_column(ForeignKey("corpus_configs.id", ondelete="CASCADE"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    historical_backfill: Mapped[bool] = mapped_column(nullable=False, default=False)
+    papers_discovered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    papers_inserted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    existing_papers_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    processing_jobs_enqueued: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    errors_encountered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    upper_cutoff: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class Document_Topics(Base):
