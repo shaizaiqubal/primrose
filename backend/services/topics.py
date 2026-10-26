@@ -1,17 +1,97 @@
 import json
 import logging
+from collections import Counter
 
+import numpy as np
 import redis
 from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
+from qdrant_client import QdrantClient
+from sklearn.cluster import KMeans
 from sqlalchemy import or_, select
 
 from backend.app.cache import TTL, cache
+from backend.app.config import (
+    QDRANT_API_KEY,
+    QDRANT_COLLECTION_NAME,
+    QDRANT_PORT,
+    QDRANT_URL,
+)
 from backend.app.database import SessionLocal
 from backend.app.models import Documents, Document_Topics, Topics
 from backend.app.schemas import DocumentResponse, TopicResponse
 
 logger = logging.getLogger(__name__)
+
+
+def _get_vector_client() -> QdrantClient:
+    return QdrantClient(
+        url=QDRANT_URL,
+        port=QDRANT_PORT,
+        api_key=QDRANT_API_KEY,
+        check_compatibility=False,
+    )
+
+
+def _get_embeddings() -> tuple[list[list[float]], list[int]]:
+    result = _get_vector_client().query_points(
+        collection_name=QDRANT_COLLECTION_NAME,
+        with_vectors=True,
+        with_payload=False,
+        limit=10000,
+    )
+    return (
+        [point.vector for point in result.points],
+        [point.id for point in result.points],
+    )
+
+
+def run_topic_pipeline(n_topics: int = 100) -> int:
+    """Cluster stored document embeddings and persist topic assignments."""
+    embeddings, document_ids = _get_embeddings()
+    if not embeddings:
+        logger.info("No embeddings available for topic generation")
+        return 0
+
+    topic_count = min(n_topics, len(embeddings))
+    model = KMeans(
+        n_clusters=topic_count,
+        init="k-means++",
+        n_init=1,
+        max_iter=300,
+        random_state=42,
+    ).fit(np.asarray(embeddings))
+    counts = Counter(model.labels_)
+
+    with SessionLocal.begin() as db:
+        db.query(Document_Topics).delete()
+        db.query(Topics).delete()
+        db.add_all(
+            Topics(
+                cluster_id=cluster_id,
+                cluster_name=None,
+                paper_count=counts[cluster_id],
+                centroid=centroid.tolist(),
+            )
+            for cluster_id, centroid in enumerate(model.cluster_centers_)
+        )
+        db.add_all(
+            Document_Topics(id=document_id, cluster_id=int(cluster_id))
+            for document_id, cluster_id in zip(document_ids, model.labels_)
+        )
+
+    _clear_topic_cache()
+    logger.info("Generated %s topics for %s documents", topic_count, len(document_ids))
+    return topic_count
+
+
+def _clear_topic_cache() -> None:
+    try:
+        keys = list(cache.scan_iter("topics:*") )
+        if keys:
+            cache.delete(*keys)
+    except redis.RedisError as exc:
+        logger.warning("Failed to clear topic cache: %s", exc)
 
 
 def get_topics() -> list[TopicResponse]:
