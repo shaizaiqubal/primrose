@@ -29,11 +29,11 @@ def test_create_document(authenticated_client):
 def test_create_document_processes_uploaded_document(authenticated_client, monkeypatch):
     from backend.app.routers import documents as documents_router
 
-    process_document = Mock(return_value=[])
+    publish_job = Mock(return_value="test-message-id")
     monkeypatch.setattr(
         documents_router,
-        "process_uploaded_document",
-        process_document,
+        "publish_entity_job",
+        publish_job,
     )
     response = authenticated_client.post(
         "/documents",
@@ -47,8 +47,7 @@ def test_create_document_processes_uploaded_document(authenticated_client, monke
     )
 
     assert response.status_code == 201
-    process_document.assert_called_once()
-    assert process_document.call_args.args[0].id == response.json()["id"]
+    publish_job.assert_called_once_with(response.json()["id"])
 
 
 def test_entity_extraction_failure_embeds_document_without_entities(monkeypatch):
@@ -62,22 +61,11 @@ def test_entity_extraction_failure_embeds_document_without_entities(monkeypatch)
         raise RuntimeError("extractor unavailable")
 
     monkeypatch.setattr(entity_service, "name_entities", fail_extraction)
-    monkeypatch.setattr(entity_service, "embed_content", lambda **_kwargs: [0.1, 0.2])
-    inserted = {}
-    monkeypatch.setattr(
-        entity_service,
-        "insert_embedding",
-        lambda _document, _vector, entity_ids: inserted.update(entity_ids=entity_ids),
-    )
     monkeypatch.setattr(entity_service, "index_entity_vectors", lambda _entities: None)
 
-    entity_service.process_uploaded_document(document)
+    entity_ids = entity_service.process_document_entities(document)
 
-    assert inserted["entity_ids"] == []
-    with SessionLocal() as db:
-        stored_document = db.get(Documents, document.id)
-        assert stored_document is not None
-        assert stored_document.embedded is True
+    assert entity_ids == []
 
 
 def test_invalid_document(authenticated_client):

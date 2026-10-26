@@ -14,9 +14,9 @@ from backend.services.reranker import RankedDocument
 from backend.services.search import get_document_service, search
 from backend.services.entities import (
     get_document_entity_ids,
-    process_uploaded_document,
 )
 from backend.services.vector_store import delete_embedding, insert_embedding
+from backend.services.embedding_queue import publish_embedding_job, publish_entity_job
 from backend.app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -53,7 +53,8 @@ def post_documents(
         db.commit()
         db.refresh(entry)
     
-    process_uploaded_document(entry)
+    publish_entity_job(entry.id)
+    publish_embedding_job(entry.id)
     return entry
 
 

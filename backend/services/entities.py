@@ -19,8 +19,8 @@ from backend.app.schemas import (
     EntityResponse,
     EntitySearchResult,
 )
-from backend.services.embed import embed_content, get_model
-from backend.services.vector_store import client, ensure_collection, insert_embedding
+from backend.services.embed import get_model
+from backend.services.vector_store import client, ensure_collection
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +362,7 @@ def index_all_entities() -> int:
     return len(entities)
 
 
-def process_uploaded_document(document: Documents) -> list[int]:
+def process_document_entities(document: Documents) -> list[int]:
     entity_ids: list[int] = []
     new_entities: list[Entity] = []
     try:
@@ -373,15 +373,6 @@ def process_uploaded_document(document: Documents) -> list[int]:
             "Entity extraction or persistence failed for paper %s; embedding without entities",
             document.id,
         )
-
-    vector = embed_content(title=document.title, abstract=document.abstract)
-    insert_embedding(document, vector, entity_ids=entity_ids)
-
-    with SessionLocal.begin() as db:
-        stored_document = db.get(Documents, document.id)
-        if stored_document is not None:
-            stored_document.embedded = True
-    document.embedded = True
 
     index_entity_vectors(new_entities)
     return entity_ids

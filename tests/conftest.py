@@ -90,8 +90,13 @@ def client(clean_test_state, monkeypatch):
 
     monkeypatch.setattr(
         documents_router,
-        "process_uploaded_document",
-        lambda document: [],
+        "publish_entity_job",
+        lambda document_id: f"test-{document_id}",
+    )
+    monkeypatch.setattr(
+        documents_router,
+        "publish_embedding_job",
+        lambda document_id: f"test-embedding-{document_id}",
     )
 
     with TestClient(app) as test_client:
