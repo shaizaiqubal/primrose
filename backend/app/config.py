@@ -1,6 +1,7 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+from datetime import date
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -31,5 +32,4 @@ ARXIV_API_URL = os.getenv("ARXIV_API_URL", "https://export.arxiv.org/api/query")
 ARXIV_API_TIMEOUT_SECONDS = float(os.getenv("ARXIV_API_TIMEOUT_SECONDS", "30"))
 ARXIV_REQUEST_INTERVAL_SECONDS = float(os.getenv("ARXIV_REQUEST_INTERVAL_SECONDS", "3"))
 ARXIV_PAGE_SIZE = int(os.getenv("ARXIV_PAGE_SIZE", "100"))
-ARXIV_INITIAL_LIMIT = int(os.getenv("ARXIV_INITIAL_LIMIT", "1000"))
-ARXIV_SYNC_OVERLAP_MINUTES = int(os.getenv("ARXIV_SYNC_OVERLAP_MINUTES", "10"))
+ARXIV_DEFAULT_START_DATE = date.fromisoformat(os.getenv("ARXIV_DEFAULT_START_DATE", "1990-01-01"))
