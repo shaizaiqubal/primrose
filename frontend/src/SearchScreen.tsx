@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
-import { getApiErrorMessage, getDocuments, searchDocuments, type Document, type RankedDocument } from './api.ts'
+import { getApiErrorMessage, getDocuments, getCorpora, searchDocuments, type Document, type RankedDocument } from './api.ts'
 import { PaperCard } from './components/PaperCard'
 import { Button, Header } from './components/ui'
 
 const BROWSE_PAGE_SIZE = 20
+
+function isUnauthorized(error: unknown) {
+  return typeof error === 'object' && error !== null && 'response' in error && (error as { response?: { status?: number } }).response?.status === 401
+}
 
 function SearchSkeleton({ status = 'Finding papers closest in meaning' }: { status?: string }) {
   return (
@@ -37,11 +41,30 @@ export function SearchScreen() {
   const [browseMoreError, setBrowseMoreError] = useState(false)
   const [browseLoadingMore, setBrowseLoadingMore] = useState(false)
   const [browseHasMore, setBrowseHasMore] = useState(false)
+  const signedIn = Boolean(localStorage.getItem('primrose-access-token'))
+  const [corpusState, setCorpusState] = useState<'public' | 'checking' | 'available' | 'empty' | 'error'>(signedIn ? 'checking' : 'public')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const checkingCorpus = corpusState === 'checking'
 
   useEffect(() => {
+    if (!signedIn || !checkingCorpus) return
+    getCorpora()
+      .then((corpora) => setCorpusState(corpora.length > 0 ? 'available' : 'empty'))
+      .catch((requestError) => {
+        if (isUnauthorized(requestError)) {
+          localStorage.removeItem('primrose-access-token')
+          localStorage.removeItem('primrose-refresh-token')
+          setCorpusState('public')
+        } else {
+          setCorpusState('error')
+        }
+      })
+  }, [checkingCorpus, signedIn])
+
+  useEffect(() => {
+    if (corpusState === 'checking' || corpusState === 'empty' || corpusState === 'error') return
     getDocuments(1, BROWSE_PAGE_SIZE)
       .then((documents) => {
         setBrowsePapers(documents)
@@ -49,9 +72,10 @@ export function SearchScreen() {
       })
       .catch(() => setBrowseError(true))
       .finally(() => setBrowseLoading(false))
-  }, [])
+  }, [corpusState])
 
   async function runSearch(searchTerm: string) {
+    if (corpusState === 'empty' || corpusState === 'checking') return
     const normalizedQuery = searchTerm.trim()
     if (!normalizedQuery) {
       inputRef.current?.focus()
@@ -108,15 +132,30 @@ export function SearchScreen() {
               ref={inputRef}
               value={query}
             />
-            <Button disabled={loading} type="submit" variant="primary">
+            <Button disabled={loading || checkingCorpus || corpusState === 'empty'} type="submit" variant="primary">
               {loading ? 'Searching' : 'Search'}
             </Button>
           </form>
         </section>
 
         {loading && <SearchSkeleton />}
-        {!loading && !submittedQuery && browseLoading && <SearchSkeleton status="Loading papers to explore" />}
-        {!loading && !submittedQuery && browseError && (
+        {corpusState === 'empty' && !loading && (
+          <div className="search-empty search-empty--corpus">
+            <h2>Your corpus is waiting to be built.</h2>
+            <p>Create a corpus before searching. It gives Primrose the papers to work from.</p>
+            <Link className="button button--primary" to="/corpora/new">Create corpus</Link>
+          </div>
+        )}
+        {corpusState === 'error' && !loading && (
+          <div className="search-error" role="alert">
+            <CircleAlert aria-hidden="true" size={32} strokeWidth={1.6} />
+            <h2>We could not check your corpus just now.</h2>
+            <p>Your search is ready whenever you are. Try again in a moment.</p>
+            <Button onClick={() => setCorpusState('checking')} variant="primary">Try again</Button>
+          </div>
+        )}
+        {corpusState !== 'empty' && corpusState !== 'error' && !loading && !submittedQuery && browseLoading && <SearchSkeleton status="Loading papers to explore" />}
+        {corpusState !== 'empty' && corpusState !== 'error' && !loading && !submittedQuery && browseError && (
           <div className="search-error" role="alert">
             <CircleAlert aria-hidden="true" size={32} strokeWidth={1.6} />
             <h2>We could not load papers just now.</h2>
@@ -146,7 +185,7 @@ export function SearchScreen() {
             </div>
           </div>
         )}
-        {!loading && !error && submittedQuery && results.length === 0 && (
+        {!loading && corpusState !== 'empty' && !error && submittedQuery && results.length === 0 && (
           <div className="search-empty">
             <h2>No papers surfaced for that question.</h2>
             <p>Try rephrasing it in a little more detail.</p>
@@ -158,7 +197,7 @@ export function SearchScreen() {
             {results.map(({ document }) => <PaperCard document={document} key={document.id} />)}
           </section>
         )}
-        {!loading && !submittedQuery && !browseLoading && !browseError && browsePapers.length > 0 && (
+        {!loading && corpusState !== 'empty' && corpusState !== 'error' && !submittedQuery && !browseLoading && !browseError && browsePapers.length > 0 && (
           <section className="search-results" aria-label="Papers in the collection">
             <p className="search-results__status">Papers</p>
             {browsePapers.map((document) => <PaperCard document={document} key={document.id} />)}

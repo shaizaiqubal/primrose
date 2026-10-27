@@ -8,6 +8,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      cache:
+        condition: service_started
       # init_schema:
       #   condition: service_completed_successfully
     volumes:
@@ -62,6 +64,41 @@ services:
       - "6379:6379"
     volumes:
       - cache_data:/data
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: cache
+      QDRANT_URL: http://qdrant:6333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      qdrant:
+        condition: service_started
+
+  entity-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: python -m backend.services.entity_worker
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: cache
+      QDRANT_URL: http://qdrant:6333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      qdrant:
+        condition: service_started
 volumes:
   postgres_data:
   qdrant_data:

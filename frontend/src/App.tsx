@@ -1,6 +1,6 @@
 import { Bookmark, ChevronDown, ChevronUp, Search } from 'lucide-react'
-import { useState } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { InboxScreen, SignInScreen, SignUpScreen, VerifyEmailScreen } from './AuthScreens'
 import { SearchScreen } from './SearchScreen'
 import { TopicDetailScreen, TopicsScreen } from './TopicScreens'
@@ -8,6 +8,7 @@ import { LibraryScreen, PaperScreen } from './PaperLibraryScreens'
 import { EntitiesScreen, EntityPapersScreen } from './EntityScreens'
 import { NotFoundScreen } from './NotFoundScreen'
 import { UnauthorizedScreen } from './UnauthorizedScreen'
+import { CorporaScreen, CreateCorpusScreen, EditCorpusScreen } from './CorpusScreens'
 import { Button, Card, Chip, Field, Header } from './components/ui'
 import './App.css'
 
@@ -27,11 +28,21 @@ export default function App() {
       <Route path="/entities" element={<EntitiesScreen />} />
       <Route path="/entities/:entityId/papers" element={<EntityPapersScreen />} />
       <Route path="/papers/:paperId" element={<PaperScreen />} />
-      <Route path="/library" element={<LibraryScreen />} />
+      <Route path="/library" element={<ProtectedRoute><LibraryScreen /></ProtectedRoute>} />
+      <Route path="/corpora" element={<ProtectedRoute><CorporaScreen /></ProtectedRoute>} />
+      <Route path="/corpora/new" element={<ProtectedRoute><CreateCorpusScreen /></ProtectedRoute>} />
+      <Route path="/corpora/:corpusId/edit" element={<ProtectedRoute><EditCorpusScreen /></ProtectedRoute>} />
       {import.meta.env.DEV && <Route path="/foundation" element={<FoundationShowcase />} />}
       <Route path="*" element={<NotFoundScreen />} />
     </Routes>
   )
+}
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  return localStorage.getItem('primrose-access-token')
+    ? children
+    : <Navigate replace state={{ returnTo: location.pathname }} to="/unauthorized" />
 }
 
 function FoundationShowcase() {

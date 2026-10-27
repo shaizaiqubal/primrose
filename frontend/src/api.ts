@@ -23,6 +23,50 @@ export type EntitySearchResult = ResponseBody<'entity_search_entities_search_get
 export type Topic = ResponseBody<'topics_topics_get', 200>[number]
 export type RecommendedPaper = ResponseBody<'get_recommendations_documents__id__recommendations_get', 200>[number]
 
+// The checked-in OpenAPI snapshot predates the corpus router. These types mirror
+// backend/app/schemas.py until the snapshot is regenerated.
+export type Corpus = {
+  id: number
+  name: string
+  source: string
+  categories: string[]
+  document_limit: number
+  sort_by: 'relevance' | 'lastUpdatedDate' | 'submittedDate'
+  sort_order: 'ascending' | 'descending'
+  start_date: string | null
+  end_date: string | null
+  last_synced: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type CorpusPayload = {
+  name: string
+  categories: string[]
+  document_limit: number
+  sort_by: Corpus['sort_by']
+  sort_order: Corpus['sort_order']
+  start_date: string
+  end_date: string
+  source?: 'arxiv'
+}
+
+export type CorpusSync = {
+  id: number
+  corpus_id: number
+  status: string
+  papers_discovered: number
+  papers_inserted: number
+  existing_papers_skipped: number
+  processing_jobs_enqueued: number
+  errors_encountered: number
+  started_at: string | null
+  completed_at: string | null
+  error_details: string | null
+  upper_cutoff: string | null
+  created_at: string
+}
+
 export async function searchDocuments(query: string, entityId?: number) {
   const response = await api.get<ResponseBody<'search_documents_documents_search_get', 200>>(
     '/documents/search',
@@ -115,6 +159,35 @@ export async function getMyUploads() {
 
 export async function getTopics() {
   const response = await api.get<ResponseBody<'topics_topics_get', 200>>('/topics')
+  return response.data
+}
+
+export async function getCorpora() {
+  const response = await api.get<Corpus[]>('/corpora')
+  return response.data
+}
+
+export async function getCorpus(id: number) {
+  const response = await api.get<Corpus>(`/corpora/${id}`)
+  return response.data
+}
+
+export async function createCorpus(payload: CorpusPayload) {
+  const response = await api.post<Corpus>('/corpora', { ...payload, source: 'arxiv' })
+  return response.data
+}
+
+export async function updateCorpus(id: number, payload: CorpusPayload) {
+  const response = await api.patch<Corpus>(`/corpora/${id}`, payload)
+  return response.data
+}
+
+export async function deleteCorpus(id: number) {
+  await api.delete(`/corpora/${id}`)
+}
+
+export async function syncCorpus(id: number) {
+  const response = await api.post<CorpusSync>(`/corpora/${id}/sync`)
   return response.data
 }
 
