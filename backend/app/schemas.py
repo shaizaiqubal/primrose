@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, EmailStr
-from datetime import datetime
+from datetime import date, datetime
+from typing import Literal
 
 class Document(BaseModel):
     arxiv_id: str | None = None
@@ -99,12 +100,22 @@ class RefreshTokenRequest(BaseModel):
 class CorpusCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     categories: list[str] = Field(min_length=1)
+    document_limit: int = Field(ge=500, le=10000)
+    sort_by: Literal["relevance", "lastUpdatedDate", "submittedDate"] = "submittedDate"
+    sort_order: Literal["ascending", "descending"] = "ascending"
+    start_date: date | None = None
+    end_date: date | None = None
     source: str = "arxiv"
 
 
 class CorpusUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     categories: list[str] | None = Field(default=None, min_length=1)
+    document_limit: int | None = Field(default=None, ge=500, le=10000)
+    sort_by: Literal["relevance", "lastUpdatedDate", "submittedDate"] | None = None
+    sort_order: Literal["ascending", "descending"] | None = None
+    start_date: date | None = None
+    end_date: date | None = None
 
 
 class CorpusResponse(BaseModel):
@@ -112,6 +123,11 @@ class CorpusResponse(BaseModel):
     name: str
     source: str
     categories: list[str]
+    document_limit: int
+    sort_by: str
+    sort_order: str
+    start_date: date | None
+    end_date: date | None
     last_synced: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -119,14 +135,13 @@ class CorpusResponse(BaseModel):
 
 
 class CorpusSyncRequest(BaseModel):
-    historical_backfill: bool = False
+    pass
 
 
 class CorpusSyncResponse(BaseModel):
     id: int
     corpus_id: int
     status: str
-    historical_backfill: bool
     papers_discovered: int
     papers_inserted: int
     existing_papers_skipped: int

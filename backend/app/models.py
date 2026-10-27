@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, Text, ForeignKey, String, JSON, UniqueConstraint, Integer
+from sqlalchemy import Date, DateTime, Text, ForeignKey, String, JSON, UniqueConstraint, Integer
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -32,7 +32,12 @@ class CorpusConfig(Base):
     name: Mapped[str] = mapped_column(nullable=False)
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="arxiv")
     categories: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    document_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=500)
+    sort_by: Mapped[str] = mapped_column(String(32), nullable=False, default="submittedDate")
+    sort_order: Mapped[str] = mapped_column(String(16), nullable=False, default="ascending")
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    start_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     last_synced: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -52,7 +57,6 @@ class CorpusSync(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     corpus_id: Mapped[int] = mapped_column(ForeignKey("corpus_configs.id", ondelete="CASCADE"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
-    historical_backfill: Mapped[bool] = mapped_column(nullable=False, default=False)
     papers_discovered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     papers_inserted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     existing_papers_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
