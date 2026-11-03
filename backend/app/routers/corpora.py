@@ -1,12 +1,11 @@
 from datetime import date, datetime, time, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import func, select
 
 from backend.app.database import SessionLocal
-from backend.app.models import CorpusConfig, CorpusDocument, CorpusSync, Documents, User
+from backend.app.models import CorpusConfig, CorpusDocument, CorpusSync, Documents
 from backend.app.config import ARXIV_DEFAULT_START_DATE
-from backend.app.routers.auth import get_current_user
 from backend.app.schemas import CorpusCreate, CorpusResponse, CorpusSyncRequest, CorpusSyncResponse, CorpusUpdate
 from backend.services.arxiv_client import validate_categories
 from backend.services.corpus_sync import SyncAlreadyRunning, create_sync
@@ -14,15 +13,36 @@ from backend.services.corpus_sync import SyncAlreadyRunning, create_sync
 router = APIRouter(prefix="/corpora", tags=["corpora"])
 
 
-def _get_corpus(db, corpus_id: int, user_id: int) -> CorpusConfig:
-    corpus = db.execute(select(CorpusConfig).where(CorpusConfig.id == corpus_id, CorpusConfig.user_id == user_id)).scalar_one_or_none()
+def _get_corpus(db, corpus_id: int) -> CorpusConfig:
+    corpus = db.execute(select(CorpusConfig).where(CorpusConfig.id == corpus_id)).scalar_one_or_none()
     if corpus is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Corpus not found")
     return corpus
 
 
+def _corpus_response(db, corpus: CorpusConfig) -> dict:
+    document_count = db.execute(
+        select(func.count()).select_from(CorpusDocument).where(CorpusDocument.corpus_id == corpus.id)
+    ).scalar_one()
+    return {
+        "id": corpus.id,
+        "name": corpus.name,
+        "source": corpus.source,
+        "categories": corpus.categories,
+        "document_limit": corpus.document_limit,
+        "sort_by": corpus.sort_by,
+        "sort_order": corpus.sort_order,
+        "start_date": corpus.start_date,
+        "end_date": corpus.end_date,
+        "last_synced": corpus.last_synced,
+        "created_at": corpus.created_at,
+        "updated_at": corpus.updated_at,
+        "document_count": document_count,
+    }
+
+
 @router.post("", response_model=CorpusResponse, status_code=status.HTTP_201_CREATED)
-def create_corpus(request: CorpusCreate, user: User = Depends(get_current_user)):
+def create_corpus(request: CorpusCreate):
     if request.source != "arxiv":
         raise HTTPException(status_code=400, detail="Only arxiv corpora are supported")
     try:
@@ -30,35 +50,44 @@ def create_corpus(request: CorpusCreate, user: User = Depends(get_current_user))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     with SessionLocal() as db:
-        if db.execute(select(CorpusConfig).where(CorpusConfig.user_id == user.id)).scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Each user can have only one corpus")
+        if db.execute(select(CorpusConfig.id)).scalar() is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A local corpus already exists")
         start_date = request.start_date or ARXIV_DEFAULT_START_DATE
         end_date = request.end_date or datetime.now(timezone.utc).date()
         if start_date > end_date:
             raise HTTPException(status_code=422, detail="start_date must be on or before end_date")
-        corpus = CorpusConfig(name=request.name.strip(), source="arxiv", categories=categories, document_limit=request.document_limit, sort_by=request.sort_by, sort_order=request.sort_order, user_id=user.id, start_date=start_date, end_date=end_date)
+        corpus = CorpusConfig(name=request.name.strip(), source="arxiv", categories=categories, document_limit=request.document_limit, sort_by=request.sort_by, sort_order=request.sort_order, start_date=start_date, end_date=end_date)
         db.add(corpus)
         db.commit()
         db.refresh(corpus)
-        return corpus
+        return _corpus_response(db, corpus)
 
 
 @router.get("", response_model=list[CorpusResponse])
-def list_corpora(user: User = Depends(get_current_user)):
+def list_corpora():
     with SessionLocal() as db:
-        return list(db.execute(select(CorpusConfig).where(CorpusConfig.user_id == user.id).order_by(CorpusConfig.id)).scalars().all())
+        corpora = list(db.execute(select(CorpusConfig).order_by(CorpusConfig.id)).scalars().all())
+        return [_corpus_response(db, corpus) for corpus in corpora]
+
+
+@router.get("/availability")
+def corpus_availability() -> dict[str, int | bool | None]:
+    """Expose whether this local Primrose instance has a corpus for public search."""
+    with SessionLocal() as db:
+        corpus_id = db.execute(select(CorpusConfig.id).order_by(CorpusConfig.id)).scalar()
+    return {"available": corpus_id is not None, "corpus_id": corpus_id}
 
 
 @router.get("/{corpus_id}", response_model=CorpusResponse)
-def get_corpus(corpus_id: int, user: User = Depends(get_current_user)):
+def get_corpus(corpus_id: int):
     with SessionLocal() as db:
-        return _get_corpus(db, corpus_id, user.id)
+        return _corpus_response(db, _get_corpus(db, corpus_id))
 
 
 @router.patch("/{corpus_id}", response_model=CorpusResponse)
-def update_corpus(corpus_id: int, request: CorpusUpdate, user: User = Depends(get_current_user)):
+def update_corpus(corpus_id: int, request: CorpusUpdate):
     with SessionLocal() as db:
-        corpus = _get_corpus(db, corpus_id, user.id)
+        corpus = _get_corpus(db, corpus_id)
         if request.name is not None:
             corpus.name = request.name.strip()
         if request.categories is not None:
@@ -81,13 +110,13 @@ def update_corpus(corpus_id: int, request: CorpusUpdate, user: User = Depends(ge
         _prune_documents(db, corpus_id, start_date, end_date)
         db.commit()
         db.refresh(corpus)
-        return corpus
+        return _corpus_response(db, corpus)
 
 
 @router.post("/{corpus_id}/sync", response_model=CorpusSyncResponse, status_code=status.HTTP_202_ACCEPTED)
-def sync_corpus(corpus_id: int, request: CorpusSyncRequest | None = None, user: User = Depends(get_current_user)):
+def sync_corpus(corpus_id: int, request: CorpusSyncRequest | None = None):
     with SessionLocal() as db:
-        _get_corpus(db, corpus_id, user.id)
+        _get_corpus(db, corpus_id)
     try:
         return create_sync(corpus_id)
     except LookupError as exc:
@@ -97,9 +126,9 @@ def sync_corpus(corpus_id: int, request: CorpusSyncRequest | None = None, user: 
 
 
 @router.get("/{corpus_id}/sync-status", response_model=CorpusSyncResponse)
-def corpus_sync_status(corpus_id: int, user: User = Depends(get_current_user)):
+def corpus_sync_status(corpus_id: int):
     with SessionLocal() as db:
-        _get_corpus(db, corpus_id, user.id)
+        _get_corpus(db, corpus_id)
         sync = db.execute(select(CorpusSync).where(CorpusSync.corpus_id == corpus_id).order_by(CorpusSync.id.desc())).scalars().first()
         if sync is None:
             raise HTTPException(status_code=404, detail="No synchronization has been requested")
@@ -107,9 +136,9 @@ def corpus_sync_status(corpus_id: int, user: User = Depends(get_current_user)):
 
 
 @router.delete("/{corpus_id}")
-def delete_corpus(corpus_id: int, user: User = Depends(get_current_user)):
+def delete_corpus(corpus_id: int):
     with SessionLocal() as db:
-        corpus = _get_corpus(db, corpus_id, user.id)
+        corpus = _get_corpus(db, corpus_id)
         active = db.execute(select(CorpusSync).where(CorpusSync.corpus_id == corpus_id, CorpusSync.status.in_(["pending", "running"]))).scalar_one_or_none()
         if active:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot delete a corpus while synchronization is running")

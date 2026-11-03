@@ -1,7 +1,12 @@
 """Run one complete topic-clustering pass for the current corpus."""
 
+import argparse
+
 from backend.services.topics import run_topic_pipeline
 
 
 if __name__ == "__main__":
-    run_topic_pipeline()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("corpus_id", type=int)
+    args = parser.parse_args()
+    run_topic_pipeline(args.corpus_id)

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
 from backend.app.database import SessionLocal
-from backend.app.models import Document_Entity, Documents, Entity, User, Bookmark
+from backend.app.models import CorpusConfig, CorpusDocument, Document_Entity, Documents, Entity, User, Bookmark
 from backend.app.schemas import (
     Document,
     DocumentResponse,
@@ -31,6 +31,13 @@ def _get_document_or_404(db, id: int) -> Documents:
             detail="Document not found",
         )
     return result
+
+
+def _get_local_corpus_id(db, requested_id: int | None = None) -> int | None:
+    statement = select(CorpusConfig.id).order_by(CorpusConfig.id)
+    if requested_id is not None:
+        statement = statement.where(CorpusConfig.id == requested_id)
+    return db.execute(statement).scalar()
 
 
 @router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -62,10 +69,16 @@ def post_documents(
 def get_documents(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=100),
+    corpus_id: int | None = Query(default=None, ge=1),
 ) -> list[Documents]:
     with SessionLocal() as db:
+        resolved_corpus_id = _get_local_corpus_id(db, corpus_id)
+        if resolved_corpus_id is None:
+            return []
         stmt = (
             select(Documents)
+            .join(CorpusDocument, CorpusDocument.document_id == Documents.id)
+            .where(CorpusDocument.corpus_id == resolved_corpus_id)
             .order_by(Documents.id)
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -77,8 +90,16 @@ def get_documents(
 def search_documents(
     query: str,
     entities: list[int] | None = Query(default=None),
+    corpus_id: int | None = Query(default=None, ge=1),
 ) -> list[RankedDocument]:
-    return search(query, entity_ids=entities)
+    with SessionLocal() as db:
+        resolved_corpus_id = _get_local_corpus_id(db, corpus_id)
+    if resolved_corpus_id is None:
+        # Keep direct API search usable for legacy/imported documents before a
+        # shared corpus has been configured. The frontend checks corpus
+        # availability first and intentionally shows an empty search state.
+        return search(query, entity_ids=entities)
+    return search(query, entity_ids=entities, corpus_id=resolved_corpus_id)
 
 
 @router.get("/{id}", response_model=DocumentResponse)

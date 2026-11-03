@@ -6,6 +6,7 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    HasIdCondition,
     MatchValue,
     PointIdsList,
     PointStruct,
@@ -116,20 +117,27 @@ def get_related_ids(id):
         raise RuntimeError("Unable to fetch related documents") from exc
 
 
-def query_documents(query_vector, entity_ids: Sequence[int] | None = None):
+def query_documents(
+    query_vector,
+    entity_ids: Sequence[int] | None = None,
+    document_ids: Sequence[int] | None = None,
+):
     try:
         ensure_collection()
-        query_filter = None
+        conditions = []
         if entity_ids:
-            query_filter = Filter(
-                must=[
+            conditions.extend([
                     FieldCondition(
                         key="entity_ids",
                         match=MatchValue(value=entity_id),
                     )
                     for entity_id in entity_ids
-                ]
-            )
+            ])
+        if document_ids is not None:
+            if not document_ids:
+                return []
+            conditions.append(HasIdCondition(has_id=list(document_ids)))
+        query_filter = Filter(must=conditions) if conditions else None
         result = client.query_points(
             collection_name=COLLECTION_NAME,
             query=query_vector,

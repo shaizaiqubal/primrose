@@ -131,6 +131,7 @@ class CorpusResponse(BaseModel):
     last_synced: datetime | None
     created_at: datetime
     updated_at: datetime
+    document_count: int = 0
     model_config = {"from_attributes": True}
 
 

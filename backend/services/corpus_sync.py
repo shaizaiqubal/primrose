@@ -90,7 +90,7 @@ def run_sync(sync_id: int, client: ArxivClient | None = None) -> None:
             if len(page) < ARXIV_PAGE_SIZE:
                 break
         _wait_for_embeddings(document_ids)
-        subprocess.run([sys.executable, "-m", "backend.services.topic_worker"], check=True)
+        subprocess.run([sys.executable, "-m", "backend.services.topic_worker", str(corpus_id)], check=True)
         with SessionLocal() as db:
             sync = db.get(CorpusSync, sync_id)
             corpus = db.get(CorpusConfig, sync.corpus_id) if sync else None

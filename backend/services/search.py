@@ -54,10 +54,22 @@ def fetch_candidates(related_ids: Sequence[object]) -> list[Documents]:
 def search(
     query: str,
     entity_ids: Sequence[int] | None = None,
+    corpus_id: int | None = None,
 ) -> list[RankedDocument]:
     query_embed = embed_content(abstract=query)
     try:
-        related_ids = query_documents(query_embed, entity_ids=entity_ids)
+        document_ids = None
+        if corpus_id is not None:
+            from backend.app.models import CorpusDocument
+
+            with SessionLocal() as db:
+                document_ids = list(
+                    db.execute(
+                        select(CorpusDocument.document_id)
+                        .where(CorpusDocument.corpus_id == corpus_id)
+                    ).scalars().all()
+                )
+        related_ids = query_documents(query_embed, entity_ids=entity_ids, document_ids=document_ids)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

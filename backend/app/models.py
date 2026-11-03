@@ -1,4 +1,4 @@
-from sqlalchemy import Date, DateTime, Text, ForeignKey, String, JSON, UniqueConstraint, Integer
+from sqlalchemy import Date, DateTime, Text, ForeignKey, ForeignKeyConstraint, String, JSON, Integer, PrimaryKeyConstraint, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,7 +26,6 @@ class Documents(Base):
 
 class CorpusConfig(Base):
     __tablename__ = "corpus_configs"
-    __table_args__ = (UniqueConstraint("user_id", name="uq_corpus_config_user"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(nullable=False)
@@ -35,7 +34,6 @@ class CorpusConfig(Base):
     document_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=500)
     sort_by: Mapped[str] = mapped_column(String(32), nullable=False, default="submittedDate")
     sort_order: Mapped[str] = mapped_column(String(16), nullable=False, default="ascending")
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     start_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     last_synced: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -72,17 +70,28 @@ class CorpusSync(Base):
 class Document_Topics(Base):
     __tablename__ = "document_topics"
 
-    id: Mapped[int] = mapped_column(ForeignKey("documents.id"), primary_key=True, )
-    cluster_id: Mapped[int] = mapped_column(ForeignKey("topics.cluster_id"))
+    corpus_id: Mapped[int] = mapped_column(ForeignKey("corpus_configs.id", ondelete="CASCADE"), nullable=False)
+    id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    cluster_id: Mapped[int] = mapped_column(nullable=False)
+    __table_args__ = (
+        PrimaryKeyConstraint("corpus_id", "id"),
+        ForeignKeyConstraint(
+            ["corpus_id", "cluster_id"],
+            ["topics.corpus_id", "topics.cluster_id"],
+            ondelete="CASCADE",
+        ),
+    )
 
 
 class Topics(Base):
     __tablename__ = "topics"
 
-    cluster_id: Mapped[int] = mapped_column(primary_key=True)
+    corpus_id: Mapped[int] = mapped_column(ForeignKey("corpus_configs.id", ondelete="CASCADE"), nullable=False)
+    cluster_id: Mapped[int] = mapped_column(nullable=False)
     cluster_name: Mapped[str | None] = mapped_column(nullable=True)
     paper_count: Mapped[int | None] = mapped_column()
     centroid: Mapped[list[float]] = mapped_column(JSON)
+    __table_args__ = (PrimaryKeyConstraint("corpus_id", "cluster_id"),)
 
 
 class User(Base):

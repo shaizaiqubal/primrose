@@ -1,6 +1,8 @@
 from google import genai
 from pydantic import BaseModel
-from sqlalchemy import case, select
+import argparse
+
+from sqlalchemy import select
 
 from backend.app.config import (
     QDRANT_API_KEY,
@@ -28,22 +30,20 @@ except Exception as exc:
     g_client = None
     print("Gemini failed")
 
-def get_unnamed_clusters():
+def get_unnamed_clusters(corpus_id: int):
     print("Fetching unnamed clusters...")
     with SessionLocal() as db:
-        stmt = select(Topics.cluster_id).where(
-            Topics.cluster_name.is_(None)
-        )
+        stmt = select(Topics.cluster_id).where(Topics.corpus_id == corpus_id, Topics.cluster_name.is_(None))
         result = db.execute(stmt).scalars().all()
 
     print(f"Found {len(result)} unnamed clusters")
     return result
 
-def get_ids(cluster):
+def get_ids(corpus_id: int, cluster: int):
     print(f"Looking up representative document IDs for cluster {cluster}...")
 
     with SessionLocal() as db:
-        stmt = select(Topics.centroid).where(Topics.cluster_id==cluster)
+        stmt = select(Topics.centroid).where(Topics.corpus_id == corpus_id, Topics.cluster_id == cluster)
         centroid = db.execute(stmt).scalar_one_or_none()
 
     if centroid is not None:
@@ -99,19 +99,25 @@ def get_clustername(ids):
     print(f"Generated cluster name: {cluster_name}")
     return cluster_name
 
-unnamed_clusters = get_unnamed_clusters()
-for cluster in unnamed_clusters: #type:ignore
-    print(f"Processing cluster {cluster}...")
-    ids = get_ids(cluster)
-    cluster_name = get_clustername(ids)
+def name_clusters(corpus_id: int) -> None:
+    unnamed_clusters = get_unnamed_clusters(corpus_id)
+    for cluster in unnamed_clusters:
+        print(f"Processing corpus {corpus_id} cluster {cluster}...")
+        ids = get_ids(corpus_id, cluster)
+        cluster_name = get_clustername(ids)
 
-    with SessionLocal() as db:
-        topic = db.get(Topics, cluster)
+        with SessionLocal() as db:
+            topic = db.get(Topics, (corpus_id, cluster))
+            if topic:
+                topic.cluster_name = cluster_name
+                db.commit()
+                print(f"Saved cluster name for corpus {corpus_id} cluster {cluster}")
+            else:
+                print(f"Topic record not found for corpus {corpus_id} cluster {cluster}")
 
-        if topic:
-            topic.cluster_name = cluster_name
-            db.commit()
-            print(f"Saved cluster name for cluster {cluster}")
-        else:
-            print(f"Topic record not found for cluster {cluster}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("corpus_id", type=int)
+    name_clusters(parser.parse_args().corpus_id)
 

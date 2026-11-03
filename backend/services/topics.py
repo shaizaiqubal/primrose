@@ -18,7 +18,7 @@ from backend.app.config import (
     QDRANT_URL,
 )
 from backend.app.database import SessionLocal
-from backend.app.models import Documents, Document_Topics, Topics
+from backend.app.models import CorpusDocument, Documents, Document_Topics, Topics
 from backend.app.schemas import DocumentResponse, TopicResponse
 
 logger = logging.getLogger(__name__)
@@ -33,23 +33,43 @@ def _get_vector_client() -> QdrantClient:
     )
 
 
-def _get_embeddings() -> tuple[list[list[float]], list[int]]:
-    result = _get_vector_client().query_points(
+def _get_corpus_document_ids(corpus_id: int) -> list[int]:
+    with SessionLocal() as db:
+        return list(
+            db.execute(
+                select(CorpusDocument.document_id)
+                .where(CorpusDocument.corpus_id == corpus_id)
+                .order_by(CorpusDocument.document_id)
+            ).scalars().all()
+        )
+
+
+def _get_embeddings(document_ids: list[int]) -> tuple[list[list[float]], list[int]]:
+    if not document_ids:
+        return [], []
+    points = _get_vector_client().retrieve(
         collection_name=QDRANT_COLLECTION_NAME,
+        ids=document_ids,
         with_vectors=True,
         with_payload=False,
-        limit=10000,
     )
-    return (
-        [point.vector for point in result.points],
-        [point.id for point in result.points],
-    )
+    embeddings: list[list[float]] = []
+    found_ids: list[int] = []
+    for point in points:
+        if point.vector is not None:
+            embeddings.append(point.vector)
+            found_ids.append(int(point.id))
+    return embeddings, found_ids
 
 
-def run_topic_pipeline(n_topics: int = 100) -> int:
-    """Cluster stored document embeddings and persist topic assignments."""
-    embeddings, document_ids = _get_embeddings()
+def run_topic_pipeline(corpus_id: int, n_topics: int = 100) -> int:
+    """Cluster only the embedded documents belonging to one corpus."""
+    document_ids = _get_corpus_document_ids(corpus_id)
+    embeddings, document_ids = _get_embeddings(document_ids)
     if not embeddings:
+        with SessionLocal.begin() as db:
+            db.query(Document_Topics).filter(Document_Topics.corpus_id == corpus_id).delete()
+            db.query(Topics).filter(Topics.corpus_id == corpus_id).delete()
         logger.info("No embeddings available for topic generation")
         return 0
 
@@ -64,10 +84,11 @@ def run_topic_pipeline(n_topics: int = 100) -> int:
     counts = Counter(model.labels_)
 
     with SessionLocal.begin() as db:
-        db.query(Document_Topics).delete()
-        db.query(Topics).delete()
+        db.query(Document_Topics).filter(Document_Topics.corpus_id == corpus_id).delete()
+        db.query(Topics).filter(Topics.corpus_id == corpus_id).delete()
         db.add_all(
             Topics(
+                corpus_id=corpus_id,
                 cluster_id=cluster_id,
                 cluster_name=None,
                 paper_count=counts[cluster_id],
@@ -75,8 +96,12 @@ def run_topic_pipeline(n_topics: int = 100) -> int:
             )
             for cluster_id, centroid in enumerate(model.cluster_centers_)
         )
+        # The assignments have a composite foreign key to the topic rows.
+        # Flush the topics first so PostgreSQL can validate that constraint
+        # when the assignments are inserted.
+        db.flush()
         db.add_all(
-            Document_Topics(id=document_id, cluster_id=int(cluster_id))
+            Document_Topics(corpus_id=corpus_id, id=document_id, cluster_id=int(cluster_id))
             for document_id, cluster_id in zip(document_ids, model.labels_)
         )
 
@@ -94,8 +119,8 @@ def _clear_topic_cache() -> None:
         logger.warning("Failed to clear topic cache: %s", exc)
 
 
-def get_topics() -> list[TopicResponse]:
-    key = "topics:topics"
+def get_topics(corpus_id: int) -> list[TopicResponse]:
+    key = f"topics:{corpus_id}:topics"
     try:
         payload = cache.get(key)
     except redis.RedisError as exc:
@@ -107,7 +132,7 @@ def get_topics() -> list[TopicResponse]:
         return [TopicResponse.model_validate(item) for item in cached_topics]
 
     with SessionLocal() as db:
-        stmt = select(Topics).order_by(Topics.paper_count.desc())
+        stmt = select(Topics).where(Topics.corpus_id == corpus_id).order_by(Topics.paper_count.desc())
         result = db.execute(stmt).scalars().all()
 
     payload = json.dumps(jsonable_encoder(result))
@@ -119,8 +144,8 @@ def get_topics() -> list[TopicResponse]:
     return [TopicResponse.model_validate(jsonable_encoder(topic)) for topic in result]
 
 
-def get_topic(topic_id: int) -> TopicResponse:
-    key = f"topics:{topic_id}"
+def get_topic(corpus_id: int, topic_id: int) -> TopicResponse:
+    key = f"topics:{corpus_id}:{topic_id}"
     try:
         payload = cache.get(key)
     except redis.RedisError as exc:
@@ -132,7 +157,7 @@ def get_topic(topic_id: int) -> TopicResponse:
         return TopicResponse.model_validate(cached_topic)
 
     with SessionLocal() as db:
-        stmt = select(Topics).where(Topics.cluster_id == topic_id)
+        stmt = select(Topics).where(Topics.corpus_id == corpus_id, Topics.cluster_id == topic_id)
         result = db.execute(stmt).scalar_one_or_none()
 
     if result is None:
@@ -151,13 +176,14 @@ def get_topic(topic_id: int) -> TopicResponse:
 
 
 def get_topic_papers(
+    corpus_id: int,
     topic_id: int,
     query: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> list[DocumentResponse]:
     normalized_query = query.strip() if query else ""
-    key = f"topics:papers:{topic_id}:{normalized_query}:{page}:{page_size}"
+    key = f"topics:{corpus_id}:papers:{topic_id}:{normalized_query}:{page}:{page_size}"
     try:
         payload = cache.get(key)
     except redis.RedisError as exc:
@@ -172,7 +198,10 @@ def get_topic_papers(
         stmt = (
             select(Documents)
             .join(Document_Topics, Documents.id == Document_Topics.id)
-            .where(Document_Topics.cluster_id == topic_id)
+            .where(
+                Document_Topics.corpus_id == corpus_id,
+                Document_Topics.cluster_id == topic_id,
+            )
         )
         if normalized_query:
             stmt = stmt.where(

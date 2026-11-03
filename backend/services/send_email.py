@@ -33,11 +33,11 @@ VERIFICATION_EMAIL_TEMPLATE = """<!DOCTYPE html>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#0C0E14;">
   <tr>
     <td align="center" style="padding:48px 16px;">
-      <table role="presentation" class="email-card" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px; max-width:100%; background-color:#12141C; border:1px solid #2A2E3D; border-radius:16px;">
+      <table role="presentation" class="email-card" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px; max-width:100%; background-color:#12141C; border:1px solid #2A2E3D; border-radius:12px;">
         <tr>
           <td class="email-pad" style="padding:40px 40px 0;">
             <div style="font-family:Georgia, 'Times New Roman', serif; font-size:28px; line-height:1.2; color:#F1EBDD;">
-              <span style="display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid #F0D77A; vertical-align:middle; margin-right:10px;"></span>Primrose
+              <span style="display:inline-block; width:14px; height:14px; border-radius:12px; border:2px solid #F0D77A; vertical-align:middle; margin-right:10px;"></span>Primrose
             </div>
           </td>
         </tr>
@@ -55,7 +55,7 @@ VERIFICATION_EMAIL_TEMPLATE = """<!DOCTYPE html>
           <td class="email-pad" style="padding:28px 40px 0;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
               <tr>
-                <td align="center" style="background-color:#F0D77A; border-radius:26px;">
+                <td align="center" style="background-color:#F0D77A; border-radius:12px;">
                   <a href="{verification_url}" style="display:inline-block; padding:0 32px; height:52px; line-height:52px; font-family:'Work Sans', Arial, sans-serif; font-size:18px; font-weight:600; color:#12141C; text-decoration:none;">
                     Verify my email
                   </a>

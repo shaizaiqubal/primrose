@@ -23,6 +23,7 @@ from backend.services.send_email import send_verification_email
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 oauth2_scheme = HTTPBearer()
+optional_oauth2_scheme = HTTPBearer(auto_error=False)
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme)
 ) -> User:
@@ -53,6 +54,14 @@ def get_current_user(
                 detail="Invalid access token",
             )
     return user
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_oauth2_scheme),
+) -> User | None:
+    if credentials is None:
+        return None
+    return get_current_user(credentials)
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: UserCreate):
@@ -161,7 +170,7 @@ def login(user_data: UserCreate) -> dict:
         if user is None or not verify_password(user_data.password, user.password_hash):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="invalid credentials",
+                detail="Invalid credentials",
             )
 
         if not user.email_verified:
