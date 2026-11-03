@@ -115,7 +115,7 @@ export function EntitiesScreen() {
         <div className="entity-tabs" aria-label="Filter entity type" role="group">
           {tabs.map(({ label, value }) => <Chip key={value} onClick={() => setTab(value)} selected={tab === value}>{label}</Chip>)}
         </div>
-        {(loading || searchLoading) && <div className="entity-groups" aria-busy="true"><p className="search-results__status" role="status">{searchLoading ? 'Searching entities' : 'Loading entities'}</p>{[0, 1, 2].map((key) => <div className="skeleton-card" key={key}><span className="skeleton-line skeleton-line--medium" /></div>)}</div>}
+        {(loading || searchLoading) && <div className="entity-loading" aria-busy="true"><p className="search-results__status" role="status">{searchLoading ? 'Searching entities' : 'Loading entities'}</p><div className="entity-groups entity-groups--skeleton">{[0, 1, 2].map((key) => <div className="skeleton-card" key={key}><span className="skeleton-line skeleton-line--medium" /></div>)}</div></div>}
         {!loading && error && <div className="state-card" role="alert"><h2>Entities are unavailable just now.</h2><p>{error}</p><Button onClick={() => { setLoading(true); void loadEntities(1, true).catch(() => setError('We could not load entities just now.')).finally(() => setLoading(false)) }} variant="primary">Try again</Button></div>}
         {!loading && !searchLoading && !error && visibleEntities.length === 0 && <p className="quiet-empty">{filter.trim() ? 'No matching entities.' : 'No entities are available.'}</p>}
         {!loading && !searchLoading && !error && <div className="entity-groups">

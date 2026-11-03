@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
 import type { operations } from './api-schema'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -8,10 +8,53 @@ export const api = axios.create({
   timeout: 10_000,
 })
 
+type RetriableRequestConfig = InternalAxiosRequestConfig & { _primroseRetried?: boolean }
+type RefreshResponse = { access_token: string; token_type: string }
+
+let refreshRequest: Promise<string | null> | null = null
+
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem('primrose-refresh-token')
+  if (!refreshToken) return null
+
+  const response = await axios.post<RefreshResponse>(
+    `${API_URL}/auth/refresh`,
+    { refresh_token: refreshToken },
+    { timeout: 10_000 },
+  )
+  localStorage.setItem('primrose-access-token', response.data.access_token)
+  return response.data.access_token
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('primrose-access-token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
+})
+
+api.interceptors.response.use(undefined, async (error: unknown) => {
+  if (!axios.isAxiosError(error) || error.response?.status !== 401) {
+    return Promise.reject(error)
+  }
+
+  const config = error.config as RetriableRequestConfig | undefined
+  if (!config || config._primroseRetried) return Promise.reject(error)
+
+  config._primroseRetried = true
+  refreshRequest ??= refreshAccessToken().finally(() => {
+    refreshRequest = null
+  })
+
+  try {
+    const accessToken = await refreshRequest
+    if (!accessToken) return Promise.reject(error)
+    config.headers.Authorization = `Bearer ${accessToken}`
+    return api.request(config)
+  } catch (refreshError) {
+    localStorage.removeItem('primrose-access-token')
+    localStorage.removeItem('primrose-refresh-token')
+    return Promise.reject(refreshError)
+  }
 })
 
 type ResponseBody<Operation extends keyof operations, Status extends keyof operations[Operation]['responses']> =
