@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button, Header } from './components/ui'
 import { createCorpus, deleteCorpus, getApiErrorMessage, getCorpus, getCorpora, syncCorpus, updateCorpus, type Corpus, type CorpusPayload } from './api.ts'
-import { UnauthorizedScreen } from './UnauthorizedScreen'
 
 type Category = { id: string; label: string; group: string }
 
@@ -30,9 +29,7 @@ const orderHints = { descending: { submittedDate: 'Newest first.', lastUpdatedDa
 const today = new Date().toISOString().slice(0, 10)
 
 function CorpusLayout({ children }: { children: React.ReactNode }) {
-  const location = useLocation()
-  if (!localStorage.getItem('primrose-access-token')) return <UnauthorizedScreen returnTo={location.pathname} />
-  return <div className="app-shell"><Header authenticated activePath="/corpora" />{children}</div>
+  return <div className="app-shell"><Header authenticated={Boolean(localStorage.getItem('primrose-access-token'))} />{children}</div>
 }
 
 function CategoryPicker({ selected, onChange }: { selected: string[]; onChange: (next: string[]) => void }) {
@@ -64,4 +61,4 @@ function DeleteCorpus({ id, name }: { id: number; name: string }) { const naviga
 export function CorporaScreen() { const navigate = useNavigate(); const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading'); useEffect(() => { void getCorpora().then((items) => { navigate(items[0] ? `/corpora/${items[0].id}/edit` : '/corpora/new', { replace: true }) }).catch(() => setState('error')) }, [navigate]); return <CorpusLayout><main className="corpus-page"><h1>Corpora.</h1>{state === 'loading' ? <p className="muted-copy">Loading your corpus…</p> : <div className="state-card" role="alert"><h2>We could not load your corpus.</h2><p>Try again, or start a new corpus.</p><Link className="button button--primary" to="/corpora/new">Build a corpus</Link></div>}</main></CorpusLayout> }
 
 export function CreateCorpusScreen() { return <CorpusForm mode="create" /> }
-export function EditCorpusScreen() { const { corpusId } = useParams(); const id = Number(corpusId); const [corpus, setCorpus] = useState<Corpus | null>(null); const [error, setError] = useState(''); useEffect(() => { if (Number.isInteger(id)) void getCorpus(id).then(setCorpus).catch((requestError) => setError(String(getApiErrorMessage(requestError, 'We could not load this corpus just now.')))) }, [id]); if (error) return <CorpusLayout><main className="corpus-page"><div className="state-card" role="alert"><h2>We could not open this corpus.</h2><p>{error}</p><Link className="button button--primary" to="/corpora">Back to corpora</Link></div></main></CorpusLayout>; return corpus ? <CorpusForm corpus={corpus} mode="edit" /> : <CorpusLayout><main className="corpus-page"><p className="muted-copy">Loading your corpus…</p></main></CorpusLayout> }
+export function EditCorpusScreen() { const { corpusId } = useParams(); const id = Number(corpusId); const [corpus, setCorpus] = useState<Corpus | null>(null); const [error, setError] = useState(''); useEffect(() => { if (Number.isInteger(id)) void getCorpus(id).then(setCorpus).catch((requestError) => setError(getApiErrorMessage(requestError, 'We could not load this corpus just now.'))) }, [id]); if (error) return <CorpusLayout><main className="corpus-page"><div className="state-card" role="alert"><h2>We could not open this corpus.</h2><p>{error}</p><Link className="button button--primary" to="/corpora">Back to corpora</Link></div></main></CorpusLayout>; return corpus ? <CorpusForm corpus={corpus} mode="edit" /> : <CorpusLayout><main className="corpus-page"><p className="muted-copy">Loading your corpus…</p></main></CorpusLayout> }

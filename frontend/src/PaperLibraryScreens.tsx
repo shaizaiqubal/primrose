@@ -10,6 +10,8 @@ import {
   getDocumentEntities,
   getMyBookmarks,
   getMyUploads,
+  getMe,
+  getCorpora,
   getRelatedDocuments,
   getRecommendedPapers,
   logout,
@@ -58,7 +60,7 @@ export function PaperScreen() {
         setEntities(paperEntities)
         setRelated(relatedPapers)
       })
-      .catch((requestError: unknown) => setError(String(getApiErrorMessage(requestError, 'We could not load this paper just now.'))))
+      .catch((requestError: unknown) => setError(getApiErrorMessage(requestError, 'We could not load this paper just now.')))
       .finally(() => setLoading(false))
 
     if (localStorage.getItem('primrose-access-token')) {
@@ -82,7 +84,7 @@ export function PaperScreen() {
       setJourney(await getRecommendedPapers(id, controller.signal))
       setJourneyOpen(true)
     } catch (requestError) {
-      if (!controller.signal.aborted) setJourneyError(String(getApiErrorMessage(requestError, 'We could not build a journey. Nothing was changed.')))
+      if (!controller.signal.aborted) setJourneyError(getApiErrorMessage(requestError, 'We could not build a journey. Nothing was changed.'))
     } finally {
       if (!controller.signal.aborted) setJourneyLoading(false)
     }
@@ -171,7 +173,7 @@ export function PaperScreen() {
             <section className="card entity-panel">
               <div>
                 <h2>Entities</h2>
-                <p>The methods, tasks and ideas this paper is about. Select one to find more papers.</p>
+                {/* <p>The methods, tasks and ideas this paper is about. Select one to find more papers.</p> */}
               </div>
               {entityTypes.map((type) => {
                 const matching = entities.filter((entity) => entity.type.trim().toLowerCase() === type.toLowerCase())
@@ -203,6 +205,8 @@ export function LibraryScreen() {
   const navigate = useNavigate()
   const [saved, setSaved] = useState<Document[]>([])
   const [uploads, setUploads] = useState<Document[]>([])
+  const [email, setEmail] = useState('')
+  const [corpus, setCorpus] = useState<Awaited<ReturnType<typeof getCorpora>>[number] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -211,11 +215,13 @@ export function LibraryScreen() {
     setLoading(true)
     setError('')
     try {
-      const [savedPapers, uploadedPapers] = await Promise.all([getMyBookmarks(), getMyUploads()])
+      const [savedPapers, uploadedPapers, user, corpora] = await Promise.all([getMyBookmarks(), getMyUploads(), getMe(), getCorpora()])
       setSaved(savedPapers)
       setUploads(uploadedPapers)
+      setEmail(user.email)
+      setCorpus(corpora[0] ?? null)
     } catch (requestError) {
-      setError(String(getApiErrorMessage(requestError, 'We could not load your library just now.')))
+      setError(getApiErrorMessage(requestError, 'We could not load your library just now.'))
     } finally {
       setLoading(false)
     }
@@ -272,12 +278,19 @@ export function LibraryScreen() {
     <div className="app-shell">
       <Header authenticated activePath="/library" />
       <main className="library-page">
-        <header className="browse-heading"><h1>Your library</h1><p>Papers you saved and papers you added yourself.</p></header>
+        <header className="browse-heading">
+          <h1>Your library</h1>
+          <div className="library-summary">
+            <span>{email}</span>
+            <span>{corpus?.name ?? 'No corpus yet'}</span>
+            <span>{corpus ? `${corpus.document_count.toLocaleString()} pages` : '0 pages'}</span>
+          </div>
+        </header>
         {error && <p className="auth-error" role="alert">{error}</p>}
         {loading ? <div className="library-columns" aria-busy="true"><div className="skeleton-card" /><div className="skeleton-card" /></div> : (
           <div className="library-columns">
-            <LibraryColumn title="Saved" papers={saved} emptyTitle="Nothing saved yet" emptyMessage="Save a paper from your search results or a paper page and it will wait for you here." emptyAction={<Link className="button button--ghost" to="/">Start a search</Link>} onRemove={removeSaved} />
-            <LibraryColumn title="Uploaded" papers={uploads} emptyTitle="No papers added yet" emptyMessage="Add a paper of your own with its title and abstract, and it will show up here." emptyAction={<Button onClick={() => setDrawerOpen(true)} variant="primary">Add a paper</Button>} onRemove={removeUpload} action={<Button onClick={() => setDrawerOpen(true)} variant="primary">Add a paper</Button>} />
+            <LibraryColumn title="Saved" papers={saved} emptyTitle="Nothing saved yet" emptyMessage="" emptyAction={<Link className="button button--ghost" to="/">Start a search</Link>} onRemove={removeSaved} />
+            <LibraryColumn title="Uploaded" papers={uploads} emptyTitle="No papers added yet" emptyMessage="" emptyAction={<Button onClick={() => setDrawerOpen(true)} variant="primary">Add a paper</Button>} onRemove={removeUpload} action={<Button onClick={() => setDrawerOpen(true)} variant="primary">Add a paper</Button>} />
           </div>
         )}
       </main>
@@ -361,7 +374,7 @@ function AddPaperDrawer({ onClose, onCreated }: { onClose: () => void; onCreated
       })
       onCreated(created)
     } catch (requestError) {
-      setErrors([String(getApiErrorMessage(requestError, 'We could not add this paper just now.'))])
+      setErrors([getApiErrorMessage(requestError, 'We could not add this paper just now.')])
     } finally {
       setSubmitting(false)
     }

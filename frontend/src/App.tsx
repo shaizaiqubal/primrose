@@ -1,7 +1,7 @@
 import { Bookmark, ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { InboxScreen, SignInScreen, SignUpScreen, VerifyEmailScreen } from './AuthScreens'
+import { EmailVerifiedScreen, InboxScreen, SignInScreen, SignUpScreen, VerifyEmailScreen } from './AuthScreens'
 import { SearchScreen } from './SearchScreen'
 import { TopicDetailScreen, TopicsScreen } from './TopicScreens'
 import { LibraryScreen, PaperScreen } from './PaperLibraryScreens'
@@ -22,6 +22,7 @@ export default function App() {
       <Route path="/signup" element={<SignUpScreen />} />
       <Route path="/inbox" element={<InboxScreen />} />
       <Route path="/verify-email" element={<VerifyEmailScreen />} />
+      <Route path="/email-verified" element={<EmailVerifiedScreen />} />
       <Route path="/unauthorized" element={<UnauthorizedScreen />} />
       <Route path="/topics" element={<TopicsScreen />} />
       <Route path="/topics/:topicId" element={<TopicDetailScreen />} />
@@ -29,9 +30,9 @@ export default function App() {
       <Route path="/entities/:entityId/papers" element={<EntityPapersScreen />} />
       <Route path="/papers/:paperId" element={<PaperScreen />} />
       <Route path="/library" element={<ProtectedRoute><LibraryScreen /></ProtectedRoute>} />
-      <Route path="/corpora" element={<ProtectedRoute><CorporaScreen /></ProtectedRoute>} />
-      <Route path="/corpora/new" element={<ProtectedRoute><CreateCorpusScreen /></ProtectedRoute>} />
-      <Route path="/corpora/:corpusId/edit" element={<ProtectedRoute><EditCorpusScreen /></ProtectedRoute>} />
+      <Route path="/corpora" element={<CorporaScreen />} />
+      <Route path="/corpora/new" element={<CreateCorpusScreen />} />
+      <Route path="/corpora/:corpusId/edit" element={<EditCorpusScreen />} />
       {import.meta.env.DEV && <Route path="/foundation" element={<FoundationShowcase />} />}
       <Route path="*" element={<NotFoundScreen />} />
     </Routes>

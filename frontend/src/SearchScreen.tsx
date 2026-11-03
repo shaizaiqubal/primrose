@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
-import { getApiErrorMessage, getDocuments, getCorpora, searchDocuments, type Document, type RankedDocument } from './api.ts'
+import { getApiErrorMessage, getDocuments, getCorpora, getCorpusAvailability, searchDocuments, type Document, type RankedDocument } from './api.ts'
 import { PaperCard } from './components/PaperCard'
 import { Button, Header } from './components/ui'
 
@@ -42,37 +42,46 @@ export function SearchScreen() {
   const [browseLoadingMore, setBrowseLoadingMore] = useState(false)
   const [browseHasMore, setBrowseHasMore] = useState(false)
   const signedIn = Boolean(localStorage.getItem('primrose-access-token'))
-  const [corpusState, setCorpusState] = useState<'public' | 'checking' | 'available' | 'empty' | 'error'>(signedIn ? 'checking' : 'public')
+  const [publicCorpusId, setPublicCorpusId] = useState<number | undefined>()
+  const [corpusState, setCorpusState] = useState<'checking' | 'available' | 'empty' | 'error'>('checking')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const checkingCorpus = corpusState === 'checking'
 
   useEffect(() => {
-    if (!signedIn || !checkingCorpus) return
-    getCorpora()
-      .then((corpora) => setCorpusState(corpora.length > 0 ? 'available' : 'empty'))
-      .catch((requestError) => {
-        if (isUnauthorized(requestError)) {
-          localStorage.removeItem('primrose-access-token')
-          localStorage.removeItem('primrose-refresh-token')
-          setCorpusState('public')
-        } else {
-          setCorpusState('error')
-        }
-      })
+    if (!checkingCorpus) return
+    const check = signedIn
+      ? getCorpora().then((corpora) => setCorpusState(corpora.length > 0 ? 'available' : 'empty'))
+      : getCorpusAvailability().then((availability) => {
+          setPublicCorpusId(availability.corpus_id ?? undefined)
+          setCorpusState(availability.available ? 'available' : 'empty')
+        }).catch(() => getDocuments(1, 1).then((documents) => {
+          // Older API deployments do not have /corpora/availability yet.
+          // The public document collection is a safe compatibility signal.
+          setCorpusState(documents.length > 0 ? 'available' : 'empty')
+        }))
+    check.catch((requestError) => {
+      if (isUnauthorized(requestError)) {
+        localStorage.removeItem('primrose-access-token')
+        localStorage.removeItem('primrose-refresh-token')
+        setCorpusState('checking')
+      } else {
+        setCorpusState('error')
+      }
+    })
   }, [checkingCorpus, signedIn])
 
   useEffect(() => {
     if (corpusState === 'checking' || corpusState === 'empty' || corpusState === 'error') return
-    getDocuments(1, BROWSE_PAGE_SIZE)
+    getDocuments(1, BROWSE_PAGE_SIZE, signedIn ? undefined : publicCorpusId)
       .then((documents) => {
         setBrowsePapers(documents)
         setBrowseHasMore(documents.length === BROWSE_PAGE_SIZE)
       })
       .catch(() => setBrowseError(true))
       .finally(() => setBrowseLoading(false))
-  }, [corpusState])
+  }, [corpusState, publicCorpusId, signedIn])
 
   async function runSearch(searchTerm: string) {
     if (corpusState === 'empty' || corpusState === 'checking') return
@@ -85,7 +94,7 @@ export function SearchScreen() {
     setLoading(true)
     setError('')
     try {
-      setResults(await searchDocuments(normalizedQuery))
+      setResults(await searchDocuments(normalizedQuery, undefined, signedIn ? undefined : publicCorpusId))
     } catch (requestError) {
       setResults([])
       setError(await getApiErrorMessage(requestError, 'We could not reach Primrose just now.'))
@@ -105,7 +114,7 @@ export function SearchScreen() {
     setBrowseMoreError(false)
     try {
       const nextPage = browsePage + 1
-      const nextPapers = await getDocuments(nextPage, BROWSE_PAGE_SIZE)
+      const nextPapers = await getDocuments(nextPage, BROWSE_PAGE_SIZE, signedIn ? undefined : publicCorpusId)
       setBrowsePapers((current) => [...current, ...nextPapers])
       setBrowsePage(nextPage)
       setBrowseHasMore(nextPapers.length === BROWSE_PAGE_SIZE)
@@ -150,7 +159,7 @@ export function SearchScreen() {
           <div className="search-error" role="alert">
             <CircleAlert aria-hidden="true" size={32} strokeWidth={1.6} />
             <h2>We could not check your corpus just now.</h2>
-            <p>Your search is ready whenever you are. Try again in a moment.</p>
+            {/* <p>Your search is ready whenever you are. Try again in a moment.</p> */}
             <Button onClick={() => setCorpusState('checking')} variant="primary">Try again</Button>
           </div>
         )}
@@ -159,11 +168,11 @@ export function SearchScreen() {
           <div className="search-error" role="alert">
             <CircleAlert aria-hidden="true" size={32} strokeWidth={1.6} />
             <h2>We could not load papers just now.</h2>
-            <p>Your search is ready whenever you are. Try again in a moment.</p>
+            {/* <p>Your search is ready whenever you are. Try again in a moment.</p> */}
             <Button onClick={() => {
               setBrowseLoading(true)
               setBrowseError(false)
-              getDocuments(1, BROWSE_PAGE_SIZE)
+              getDocuments(1, BROWSE_PAGE_SIZE, signedIn ? undefined : publicCorpusId)
                 .then((documents) => {
                   setBrowsePapers(documents)
                   setBrowseHasMore(documents.length === BROWSE_PAGE_SIZE)

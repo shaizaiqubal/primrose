@@ -3,7 +3,10 @@ import type { operations } from './api-schema'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-export const api = axios.create({ baseURL: API_URL })
+export const api = axios.create({
+  baseURL: API_URL,
+  timeout: 10_000,
+})
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('primrose-access-token')
@@ -38,6 +41,7 @@ export type Corpus = {
   last_synced: string | null
   created_at: string
   updated_at: string
+  document_count: number
 }
 
 export type CorpusPayload = {
@@ -67,17 +71,19 @@ export type CorpusSync = {
   created_at: string
 }
 
-export async function searchDocuments(query: string, entityId?: number) {
+export type CorpusAvailability = { available: boolean; corpus_id: number | null }
+
+export async function searchDocuments(query: string, entityId?: number, corpusId?: number) {
   const response = await api.get<ResponseBody<'search_documents_documents_search_get', 200>>(
     '/documents/search',
-    { params: { query, ...(entityId ? { entities: entityId } : {}) } },
+    { params: { query, ...(entityId ? { entities: entityId } : {}), ...(corpusId ? { corpus_id: corpusId } : {}) } },
   )
   return response.data
 }
 
-export async function getDocuments(page = 1, pageSize = 50) {
+export async function getDocuments(page = 1, pageSize = 50, corpusId?: number) {
   const response = await api.get<ResponseBody<'get_documents_documents_get', 200>>('/documents', {
-    params: { page, page_size: pageSize },
+    params: { page, page_size: pageSize, ...(corpusId ? { corpus_id: corpusId } : {}) },
   })
   return response.data
 }
@@ -152,6 +158,11 @@ export async function getMyBookmarks() {
   return response.data
 }
 
+export async function getMe() {
+  const response = await api.get<ResponseBody<'get_me_me_get', 200>>('/me')
+  return response.data
+}
+
 export async function getMyUploads() {
   const response = await api.get<ResponseBody<'get_user_uploads_me_uploads_get', 200>>('/me/uploads')
   return response.data
@@ -164,6 +175,11 @@ export async function getTopics() {
 
 export async function getCorpora() {
   const response = await api.get<Corpus[]>('/corpora')
+  return response.data
+}
+
+export async function getCorpusAvailability() {
+  const response = await api.get<CorpusAvailability>('/corpora/availability')
   return response.data
 }
 
@@ -211,7 +227,7 @@ export async function getEntityPapers(id: number) {
   return response.data
 }
 
-export async function getApiErrorMessage(error: unknown, fallback: string) {
+export function getApiErrorMessage(error: unknown, fallback: string) {
   if (!axios.isAxiosError<{ detail?: string }>(error)) return fallback
   const detail = error.response?.data?.detail
   return typeof detail === 'string' ? detail : fallback

@@ -102,7 +102,6 @@ export function SignInScreen() {
     <AuthLayout>
       <div className="auth-intro">
         <h1 className="auth-title">Welcome back.</h1>
-        <p>Sign in to pick up where you left off.</p>
       </div>
       {verified && <p className="auth-notice" role="status">Your email is verified. Sign in to continue.</p>}
       {signedIn && <p className="auth-notice" role="status">You are signed in.</p>}
@@ -266,7 +265,7 @@ export function VerifyEmailScreen() {
     let active = true
     verifyEmailOnce(token)
       .then(() => {
-        if (active) navigate('/', { replace: true })
+        if (active) navigate('/email-verified', { replace: true })
       })
       .catch((requestError: unknown) => {
         if (active) setError(getApiError(requestError, 'We could not verify this link. Request a new one and try again.'))
@@ -284,5 +283,20 @@ export function VerifyEmailScreen() {
       </div>
       {error && <div className="auth-actions"><Link className="button button--primary" to="/inbox">Back to your inbox</Link></div>}
     </AuthLayout>
+  )
+}
+
+export function EmailVerifiedScreen() {
+  return (
+    <div className="app-shell auth-shell">
+      <main className="auth-page verification-success-page">
+        <div className="auth-intro">
+          <p className="eyebrow">Email verification</p>
+          <h1 className="auth-title">Your email has been verified.</h1>
+          <p className="auth-copy">You can close this page now.</p>
+        </div>
+        <Link className="button button--primary" to="/signin">Go to your account</Link>
+      </main>
+    </div>
   )
 }

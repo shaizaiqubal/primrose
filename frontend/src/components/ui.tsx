@@ -62,7 +62,7 @@ type HeaderProps = {
 export function Header({ authenticated = false, activePath }: HeaderProps) {
   const currentPath = useLocation().pathname
   const selectedPath = activePath ?? currentPath
-  const authRoute = ['/signin', '/signup', '/inbox', '/verify-email', '/unauthorized'].includes(currentPath)
+  const authRoute = ['/signin', '/signup', '/inbox', '/verify-email', '/email-verified', '/unauthorized'].includes(currentPath)
   const showNavigation = authenticated || !authRoute
   const links = authenticated
     ? [

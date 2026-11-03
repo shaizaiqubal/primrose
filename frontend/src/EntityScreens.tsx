@@ -40,7 +40,7 @@ export function EntitiesScreen() {
     setLoading(true)
     setError('')
     void loadEntities(1, true)
-      .catch((requestError: unknown) => setError(String(getApiErrorMessage(requestError, 'We could not load entities just now.'))))
+      .catch((requestError: unknown) => setError(getApiErrorMessage(requestError, 'We could not load entities just now.')))
       .finally(() => setLoading(false))
   }, [tab, filter])
 
@@ -61,7 +61,7 @@ export function EntitiesScreen() {
         .catch((requestError: unknown) => {
           if (!controller.signal.aborted) {
             setSearchResults([])
-            setError(String(getApiErrorMessage(requestError, 'We could not search entities just now.')))
+            setError(getApiErrorMessage(requestError, 'We could not search entities just now.'))
           }
         })
         .finally(() => {
@@ -98,7 +98,7 @@ export function EntitiesScreen() {
     try {
       await loadEntities(page + 1)
     } catch (requestError) {
-      setError(String(getApiErrorMessage(requestError, 'We could not load more entities just now.')))
+      setError(getApiErrorMessage(requestError, 'We could not load more entities just now.'))
     } finally {
       setLoadingMore(false)
     }
@@ -151,7 +151,7 @@ export function EntityPapersScreen() {
         setEntity(entityPage.items.find((item) => item.id === id) ?? null)
         setPapers(documents)
       })
-      .catch((requestError: unknown) => setError(String(getApiErrorMessage(requestError, 'We could not load papers for this entity just now.'))))
+      .catch((requestError: unknown) => setError(getApiErrorMessage(requestError, 'We could not load papers for this entity just now.')))
       .finally(() => setLoading(false))
   }, [id])
 

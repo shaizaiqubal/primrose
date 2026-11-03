@@ -16,7 +16,7 @@ export function TopicsScreen() {
   useEffect(() => {
     getTopics()
       .then(setTopics)
-      .catch((requestError: unknown) => setError(String(getApiErrorMessage(requestError, 'We could not load topics just now.'))))
+      .catch((requestError: unknown) => setError(getApiErrorMessage(requestError, 'We could not load topics just now.')))
       .finally(() => setLoading(false))
   }, [])
 
@@ -48,7 +48,7 @@ export function TopicsScreen() {
           </label>
         </div>
         {loading && <div className="topic-rows" aria-busy="true">{[0, 1, 2, 3].map((key) => <div className="topic-row-skeleton" key={key} />)}</div>}
-        {!loading && error && <StateCard title="Topics are unavailable just now." message="We could not reach Primrose. Try again in a moment." onRetry={() => { setLoading(true); setError(''); void getTopics().then(setTopics).catch(() => setError('We could not load topics just now.')).finally(() => setLoading(false)) }} />}
+        {!loading && error && <StateCard title="Topics are unavailable just now." message="" onRetry={() => { setLoading(true); setError(''); void getTopics().then(setTopics).catch(() => setError('We could not load topics just now.')).finally(() => setLoading(false)) }} />}
         {!loading && !error && visibleTopics.length === 0 && <p className="quiet-empty">No topics match that filter.</p>}
         {!loading && !error && visibleTopics.length > 0 && (
           <div className="topic-rows">
@@ -100,7 +100,7 @@ export function TopicDetailScreen() {
         setPapers(paperResponse)
         setPage(1)
       })
-      .catch((requestError: unknown) => setError(String(getApiErrorMessage(requestError, 'We could not load this topic just now.'))))
+      .catch((requestError: unknown) => setError(getApiErrorMessage(requestError, 'We could not load this topic just now.')))
       .finally(() => setLoading(false))
   }, [id])
 
@@ -115,7 +115,7 @@ export function TopicDetailScreen() {
       setPapers(nextPapers)
     } catch (requestError) {
       setPapers([])
-      setError(String(getApiErrorMessage(requestError, 'We could not search this topic just now.')))
+      setError(getApiErrorMessage(requestError, 'We could not search this topic just now.'))
     } finally {
       setLoading(false)
     }
@@ -129,7 +129,7 @@ export function TopicDetailScreen() {
       setPapers((current) => [...current, ...nextPapers])
       setPage(nextPage)
     } catch (requestError) {
-      setError(String(getApiErrorMessage(requestError, 'We could not load more papers just now.')))
+      setError(getApiErrorMessage(requestError, 'We could not load more papers just now.'))
     } finally {
       setLoadingMore(false)
     }
