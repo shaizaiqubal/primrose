@@ -17,7 +17,7 @@ export function UnauthorizedScreen({ returnTo }: { returnTo?: string }) {
         <div className="unauthorized-page__copy">
           <span className="eyebrow">Sign in required</span>
           <h1>Sign in to see this page.</h1>
-          <p>This page belongs to your account. Sign in or create one, and we will bring you straight back here.</p>
+          {/* <p>This page belongs to your account. Sign in or create one, and we will bring you straight back here.</p> */}
         </div>
         <div className="unauthorized-page__actions">
           <Link className="button button--primary" to="/signin" state={authState}>Sign in</Link>
