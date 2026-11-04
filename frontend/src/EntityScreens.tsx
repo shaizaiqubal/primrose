@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getApiErrorMessage, getEntityPapers, listEntities, searchEntities, type Document, type Entity, type EntitySearchResult } from './api.ts'
-import { PaperCard } from './components/PaperCard'
+import { PaperResultsLayout } from './components/PaperResults'
 import { Button, Chip, Field, Header } from './components/ui'
 
 type EntityType = 'method' | 'model' | 'dataset' | 'task' | 'metric'
@@ -139,6 +139,7 @@ export function EntityPapersScreen() {
   const [papers, setPapers] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedPaperId, setSelectedPaperId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!Number.isInteger(id) || id < 1) {
@@ -150,6 +151,7 @@ export function EntityPapersScreen() {
       .then(([entityPage, documents]) => {
         setEntity(entityPage.items.find((item) => item.id === id) ?? null)
         setPapers(documents)
+        setSelectedPaperId(null)
       })
       .catch((requestError: unknown) => setError(getApiErrorMessage(requestError, 'We could not load papers for this entity just now.')))
       .finally(() => setLoading(false))
@@ -158,13 +160,13 @@ export function EntityPapersScreen() {
   return (
     <div className="app-shell">
       <Header authenticated={Boolean(localStorage.getItem('primrose-access-token'))} activePath="/entities" />
-      <main className="search-page entity-papers-page">
+      <main className="search-page paper-results-page entity-papers-page">
         <Link className="back-link" to="/entities">Back to entities</Link>
         <header className="topic-detail-heading"><h1>{entity?.canonical_name ?? 'Entity papers'}</h1>{entity && <p>{entity.type[0].toUpperCase() + entity.type.slice(1)}</p>}</header>
         {loading && <div className="skeleton-card" aria-busy="true"><span className="skeleton-line" /><span className="skeleton-line skeleton-line--medium" /></div>}
         {!loading && error && <div className="state-card" role="alert"><h2>We could not load these papers.</h2><p>{error}</p></div>}
         {!loading && !error && papers.length === 0 && <p className="quiet-empty">No papers are currently connected to this entity.</p>}
-        {!loading && !error && papers.length > 0 && <section className="search-results"><p className="search-results__status">Papers about this entity</p>{papers.map((paper) => <PaperCard document={paper} key={paper.id} />)}</section>}
+        {!loading && !error && papers.length > 0 && <PaperResultsLayout browseLinks documents={papers} label="Papers about this entity" onSelect={setSelectedPaperId} selectedPaperId={selectedPaperId} />}
       </main>
     </div>
   )

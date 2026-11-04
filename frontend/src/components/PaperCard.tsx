@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Bookmark, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { Bookmark } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { addBookmark, removeBookmark, type Document } from '../api.ts'
 import { Button, Card } from './ui'
@@ -10,10 +10,17 @@ function authorSummary(authors: string | null, year: number | null) {
   return [byline, year].filter(Boolean).join(', ')
 }
 
-export function PaperCard({ document, saved = false }: { document: Document; saved?: boolean }) {
+type PaperCardProps = {
+  document: Document
+  saved?: boolean
+  compact?: boolean
+  selected?: boolean
+  onSelect?: () => void
+}
+
+export function PaperActions({ document, saved = false }: { document: Document; saved?: boolean }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [expanded, setExpanded] = useState(false)
   const [isSaved, setIsSaved] = useState(saved)
   const [bookmarkError, setBookmarkError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -36,33 +43,48 @@ export function PaperCard({ document, saved = false }: { document: Document; sav
     }
   }
 
+  return <div className="paper-actions">
+    <Link className="button button--primary" to={`/papers/${document.id}`}>Open paper</Link>
+    <Button
+      aria-label={isSaved ? 'Saved. Remove from saved' : 'Save paper'}
+      disabled={saving}
+      onClick={toggleBookmark}
+      title={isSaved ? 'Saved. Remove from saved' : 'Save paper'}
+      variant="icon"
+    >
+      <Bookmark fill={isSaved ? 'currentColor' : 'none'} size={19} strokeWidth={1.8} />
+    </Button>
+    {bookmarkError && <p className="paper-card__error" role="alert">{bookmarkError}</p>}
+  </div>
+}
+
+export function PaperCard({ document, saved = false, compact = true, selected = false, onSelect }: PaperCardProps) {
+  function handleClick(event: MouseEvent<HTMLElement>) {
+    if (onSelect && !(event.target as HTMLElement).closest('button, a')) onSelect()
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (!onSelect || (event.key !== 'Enter' && event.key !== ' ')) return
+    event.preventDefault()
+    onSelect()
+  }
+
   return (
-    <Card className="paper-card">
-      <p className="paper-card__meta">{authorSummary(document.authors, document.year_published) || 'Paper'}</p>
-      <h2 className="paper-card__title"><Link to={`/papers/${document.id}`}>{document.title}</Link></h2>
-      <div className="sample-row">
-        <Link className="button button--primary" to={`/papers/${document.id}`}>Open paper</Link>
-        <Button
-          aria-label={isSaved ? 'Saved. Remove from saved' : 'Save for later'}
-          disabled={saving}
-          onClick={toggleBookmark}
-          title={isSaved ? 'Saved. Remove from saved' : 'Save for later'}
-          variant="icon"
-        >
-          <Bookmark fill={isSaved ? 'currentColor' : 'none'} size={19} strokeWidth={1.8} />
-        </Button>
-        <Button
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Hide abstract' : 'Show abstract'}
-          onClick={() => setExpanded((current) => !current)}
-          title={expanded ? 'Hide abstract' : 'Show abstract'}
-          variant="icon"
-        >
-          {expanded ? <ChevronUp size={19} strokeWidth={1.8} /> : <ChevronDown size={19} strokeWidth={1.8} />}
-        </Button>
+    <Card
+      aria-current={selected ? 'true' : undefined}
+      aria-pressed={onSelect ? selected : undefined}
+      className={`paper-card${compact ? ' paper-card--compact' : ''}${selected ? ' is-selected' : ''}`}
+      onClick={onSelect ? handleClick : undefined}
+      onKeyDown={onSelect ? handleKeyDown : undefined}
+      aria-label={onSelect ? `Select ${document.title}` : undefined}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+    >
+      <div className="paper-card__copy">
+        <p className="paper-card__meta">{authorSummary(document.authors, document.year_published) || 'Paper'}</p>
+        <h2 className="paper-card__title"><Link to={`/papers/${document.id}`}>{document.title}</Link></h2>
       </div>
-      {bookmarkError && <p className="paper-card__error" role="alert">{bookmarkError}</p>}
-      {expanded && <p className="paper-card__abstract">{document.abstract}</p>}
+      <PaperActions document={document} saved={saved} />
     </Card>
   )
 }

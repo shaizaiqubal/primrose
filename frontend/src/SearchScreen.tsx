@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { CircleAlert } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { getApiErrorMessage, getDocuments, getCorpora, getCorpusAvailability, searchDocuments, type Document, type RankedDocument } from './api.ts'
-import { PaperCard } from './components/PaperCard'
+import { PaperResultsLayout } from './components/PaperResults'
 import { Button, Header } from './components/ui'
 
 const BROWSE_PAGE_SIZE = 20
@@ -13,18 +13,15 @@ function isUnauthorized(error: unknown) {
 
 function SearchSkeleton({ status = 'Finding papers closest in meaning' }: { status?: string }) {
   return (
-    <div className="search-results search-results--loading" aria-busy="true">
-      <p className="search-results__status" role="status">{status}</p>
-      {[0, 1].map((key) => (
-        <article className="skeleton-card" aria-hidden="true" key={key}>
-          <span className="skeleton-line skeleton-line--short" />
-          <span className="skeleton-line" />
-          <span className="skeleton-line skeleton-line--medium" />
-          <span className="skeleton-line skeleton-line--meta" />
-          <div className="skeleton-actions"><span /><span /></div>
-        </article>
-      ))}
-    </div>
+    <section className="search-results search-results--master-detail search-results--loading" aria-busy="true">
+      <div className="search-results__header"><span role="status">{status}</span></div>
+      <div className="search-results__layout">
+        <div className="search-results__list">
+          {[0, 1, 2].map((key) => <article className="skeleton-card skeleton-card--compact" aria-hidden="true" key={key}><div><span className="skeleton-line skeleton-line--short" /><span className="skeleton-line skeleton-line--medium" /></div><div className="skeleton-actions"><span /><span /></div></article>)}
+        </div>
+        <aside className="search-detail search-detail--skeleton" aria-label="Paper preview" />
+      </div>
+    </section>
   )
 }
 
@@ -46,6 +43,7 @@ export function SearchScreen() {
   const [corpusState, setCorpusState] = useState<'checking' | 'available' | 'empty' | 'error'>('checking')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedPaperId, setSelectedPaperId] = useState<number | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const checkingCorpus = corpusState === 'checking'
 
@@ -91,6 +89,7 @@ export function SearchScreen() {
       return
     }
     setSubmittedQuery(normalizedQuery)
+    setSelectedPaperId(null)
     setLoading(true)
     setError('')
     try {
@@ -128,7 +127,7 @@ export function SearchScreen() {
   return (
     <div className="app-shell">
       <Header authenticated={Boolean(localStorage.getItem('primrose-access-token'))} />
-      <main className="search-page">
+      <main className="search-page search-page--results">
         <section className="search-prompt" aria-labelledby="search-heading">
           <h1 id="search-heading">Ask in your own words.</h1>
           <form className="search-form" onSubmit={handleSubmit}>
@@ -200,34 +199,19 @@ export function SearchScreen() {
             <p>Try rephrasing it in a little more detail.</p>
           </div>
         )}
-        {!loading && results.length > 0 && (
-          <section className="search-results" aria-label="Search results">
-            <p className="search-results__status">Papers closest in meaning</p>
-            {results.map(({ document }) => <PaperCard document={document} key={document.id} />)}
-          </section>
-        )}
+        {!loading && results.length > 0 && <PaperResultsLayout browseLinks documents={results.map(({ document }) => document)} label="Papers" onSelect={setSelectedPaperId} selectedPaperId={selectedPaperId} />}
         {!loading && corpusState !== 'empty' && corpusState !== 'error' && !submittedQuery && !browseLoading && !browseError && browsePapers.length > 0 && (
-          <section className="search-results" aria-label="Papers in the collection">
-            <p className="search-results__status">Papers</p>
-            {browsePapers.map((document) => <PaperCard document={document} key={document.id} />)}
-            {browseMoreError && <p className="paper-card__error" role="alert">Could not load more papers. Try again.</p>}
-            {browseHasMore && (
-              <div className="topic-pagination">
-                <span>{browsePapers.length} papers shown</span>
-                <Button disabled={browseLoadingMore} onClick={() => void showMorePapers()}>
-                  {browseLoadingMore ? 'Loading papers' : browseMoreError ? 'Try again' : 'Show more papers'}
-                </Button>
-              </div>
-            )}
-          </section>
+          <PaperResultsLayout
+            documents={browsePapers}
+            footer={<>
+              {browseMoreError && <p className="paper-card__error" role="alert">Could not load more papers. Try again.</p>}
+              {browseHasMore && <div className="topic-pagination"><span>{browsePapers.length} papers shown</span><Button disabled={browseLoadingMore} onClick={() => void showMorePapers()}>{browseLoadingMore ? 'Loading papers' : browseMoreError ? 'Try again' : 'Show more papers'}</Button></div>}
+            </>}
+            label="Papers"
+            onSelect={setSelectedPaperId}
+            selectedPaperId={selectedPaperId}
+          />
         )}
-
-        <nav className="search-browse" aria-label="Browse Primrose">
-          <span>Prefer to browse?</span>
-          <Link to="/topics">Topics</Link>
-          <span aria-hidden="true">·</span>
-          <Link to="/entities">Entities</Link>
-        </nav>
       </main>
     </div>
   )

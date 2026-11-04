@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getApiErrorMessage, getTopic, getTopicPapers, getTopics, type Topic } from './api.ts'
-import { PaperCard } from './components/PaperCard'
+import { PaperResultsLayout } from './components/PaperResults'
 import { Button, Field, Header } from './components/ui'
 
 type SortOrder = 'most' | 'fewest' | 'alphabetical'
@@ -86,6 +86,7 @@ export function TopicDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
+  const [selectedPaperId, setSelectedPaperId] = useState<number | null>(null)
   const pageSize = 20
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export function TopicDetailScreen() {
         setTopic(topicResponse)
         setPapers(paperResponse)
         setPage(1)
+        setSelectedPaperId(null)
       })
       .catch((requestError: unknown) => setError(getApiErrorMessage(requestError, 'We could not load this topic just now.')))
       .finally(() => setLoading(false))
@@ -110,6 +112,7 @@ export function TopicDetailScreen() {
     setError('')
     setAppliedQuery(query.trim())
     setPage(1)
+    setSelectedPaperId(null)
     try {
       const nextPapers = await getTopicPapers(id, query.trim() || undefined, 1, pageSize)
       setPapers(nextPapers)
@@ -140,7 +143,7 @@ export function TopicDetailScreen() {
   return (
     <div className="app-shell">
       <Header authenticated={Boolean(localStorage.getItem('primrose-access-token'))} activePath="/topics" />
-      <main className="search-page topic-detail-page">
+      <main className="search-page paper-results-page topic-detail-page">
         <header className="topic-detail-heading">
           <Link className="back-link" to="/topics">Back to topics</Link>
           <h1>{topic?.topic_name ?? 'Topic'}</h1>
@@ -154,8 +157,7 @@ export function TopicDetailScreen() {
         {loading && <div className="search-results" aria-busy="true"><p className="search-results__status" role="status">Finding papers in this topic</p><div className="skeleton-card"><span className="skeleton-line" /><span className="skeleton-line skeleton-line--medium" /><span className="skeleton-line skeleton-line--meta" /></div></div>}
         {!loading && error && <StateCard title="We could not load these papers just now." message={error} onRetry={() => { setError(''); setLoading(true); void getTopicPapers(id, appliedQuery || undefined, 1, pageSize).then(setPapers).catch(() => setError('We could not load these papers just now.')).finally(() => setLoading(false)) }} />}
         {!loading && !error && papers.length === 0 && <div className="quiet-empty"><h2>No papers surfaced for that question.</h2><p>Try rephrasing it in a little more detail.</p></div>}
-        {!loading && !error && papers.length > 0 && <section className="search-results"><p className="search-results__status">Papers in this topic</p>{papers.map((paper) => <PaperCard document={paper} key={paper.id} />)}</section>}
-        {!error && topic && <div className="topic-pagination"><span>Showing {papers.length} of {topic.paper_count}</span>{hasMore && <Button disabled={loadingMore} onClick={showMore}>{loadingMore ? 'Loading papers' : 'Show more papers'}</Button>}</div>}
+        {!loading && !error && papers.length > 0 && <PaperResultsLayout browseLinks documents={papers} footer={<div className="topic-pagination"><span>Showing {papers.length} of {topic?.paper_count ?? papers.length}</span>{hasMore && <Button disabled={loadingMore} onClick={showMore}>{loadingMore ? 'Loading papers' : 'Show more papers'}</Button>}</div>} label="Papers in this topic" onSelect={setSelectedPaperId} selectedPaperId={selectedPaperId} />}
       </main>
     </div>
   )

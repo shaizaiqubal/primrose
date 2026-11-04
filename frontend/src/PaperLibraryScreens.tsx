@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Bookmark, LogOut, Minus, Plus, X } from 'lucide-react'
+import { Bookmark, LogOut, X } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   api,
@@ -43,7 +43,6 @@ export function PaperScreen() {
   const [journeyLoading, setJourneyLoading] = useState(false)
   const [journeyError, setJourneyError] = useState('')
   const journeyController = useRef<AbortController | null>(null)
-  const [abstractSize, setAbstractSize] = useState(() => Number(localStorage.getItem('primrose-abstract-size')) || 16)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -67,12 +66,6 @@ export function PaperScreen() {
       void getMyBookmarks().then((bookmarks) => setSaved(bookmarks.some((item) => item.id === id))).catch(() => undefined)
     }
   }, [id])
-
-  function changeAbstractSize(delta: number) {
-    const nextSize = Math.min(22, Math.max(14, abstractSize + delta))
-    setAbstractSize(nextSize)
-    localStorage.setItem('primrose-abstract-size', String(nextSize))
-  }
 
   async function generateJourney() {
     journeyController.current?.abort()
@@ -148,11 +141,8 @@ export function PaperScreen() {
               <Button aria-label={saved ? 'Saved. Remove from saved' : 'Save for later'} onClick={() => void toggleBookmark()} title={saved ? 'Saved. Remove from saved' : 'Save for later'} variant="icon">
                 <Bookmark fill={saved ? 'currentColor' : 'none'} size={19} />
               </Button>
-              <span className="paper-reading__spacer" />
-              <Button aria-label="Smaller text" onClick={() => changeAbstractSize(-1)} title="Smaller text" variant="icon"><Minus size={17} /></Button>
-              <Button aria-label="Larger text" onClick={() => changeAbstractSize(1)} title="Larger text" variant="icon"><Plus size={17} /></Button>
             </div>
-            <p className="paper-reading__abstract" style={{ fontSize: `${abstractSize}px` }}>{paper.abstract}</p>
+            <p className="paper-reading__abstract">{paper.abstract}</p>
             {journeyOpen && journey && (
               <section className="reading-journey" aria-labelledby="journey-heading">
                 <div className="reading-journey__heading">
