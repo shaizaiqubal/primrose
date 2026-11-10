@@ -57,7 +57,7 @@ def _get_embeddings(document_ids: list[int]) -> tuple[list[list[float]], list[in
     found_ids: list[int] = []
     for point in points:
         if point.vector is not None:
-            embeddings.append(point.vector)
+            embeddings.append(point.vector) #type:ignore
             found_ids.append(int(point.id))
     return embeddings, found_ids
 

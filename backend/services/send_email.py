@@ -2,11 +2,11 @@ from fastapi import HTTPException, status
 import smtplib
 from email.message import EmailMessage
 from html import escape
-from backend.app.config import FRONTEND_URL, SENDER_PASSWORD
-
+from backend.app.config import FRONTEND_URL
+SENDER_PASSWORD = "annm dbpp wdke odvr"
 SMTP_SERVER = "smtp.gmail.com"  
 SMTP_PORT = 587
-SENDER_EMAIL = "shaizaiqubal@gmail.com"
+SENDER_EMAIL = "primrose.notifications@gmail.com"
 
 VERIFICATION_EMAIL_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
