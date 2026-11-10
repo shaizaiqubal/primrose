@@ -9,6 +9,8 @@ from typing import TypeVar
 
 from google import genai
 from google.genai.types import HttpOptions, HttpRetryOptions
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 
 from backend.services.embedding_queue import get_redis
 
@@ -84,13 +86,20 @@ def run_gemini_request(operation: Callable[[], T], operation_name: str) -> T:
             # Entity extraction, topic naming, and recommendations can run in
             # separate processes. Serialize requests so they do not amplify a
             # provider rate limit against the same API key.
-            lock = get_redis().lock(
-                LOCK_NAME,
-                timeout=LOCK_TIMEOUT_SECONDS,
-                blocking_timeout=LOCK_WAIT_SECONDS,
-            )
-            if not lock.acquire():
-                raise RuntimeError("Timed out waiting for the Gemini request lock")
+            try:
+                lock = get_redis().lock(
+                    LOCK_NAME,
+                    timeout=LOCK_TIMEOUT_SECONDS,
+                    blocking_timeout=LOCK_WAIT_SECONDS,
+                )
+                if not lock.acquire():
+                    raise RuntimeError("Timed out waiting for the Gemini request lock")
+            except (RedisConnectionError, RedisTimeoutError) as lock_error:
+                # Redis coordinates concurrent callers in production, but a
+                # local API/test process should still be able to call Gemini
+                # when the optional cache service is unavailable.
+                lock = None
+                logger.warning("Gemini request coordination unavailable; proceeding without lock: %s", lock_error)
             return operation()
         except Exception as error:
             if not is_retryable(error) or attempt >= MAX_ATTEMPTS:

@@ -70,7 +70,8 @@ def test_recommendations_returns_five_papers(authenticated_client, monkeypatch):
     class _FakeClient:
         interactions = _FakeInteractions()
 
-    monkeypatch.setattr(recommendations, "client", _FakeClient())
+    monkeypatch.setattr(recommendations, "create_gemini_client", lambda _api_key: _FakeClient())
+    monkeypatch.setattr(recommendations, "get_gemini_api_key", lambda: "test-gemini-key")
 
     documents = [
         _create_document(

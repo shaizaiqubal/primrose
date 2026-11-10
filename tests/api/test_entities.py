@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.app.database import SessionLocal
-from backend.app.models import Bookmark, Document_Entity, Documents, Entity, User
+from backend.app.models import Bookmark, CorpusConfig, CorpusDocument, Document_Entity, Documents, Entity, User
 from backend.app.routers import documents as documents_router
 from backend.services import entities as entity_service
 from backend.services import vector_store
@@ -13,6 +13,11 @@ from backend.services import vector_store
 def _create_entity_with_papers(name: str, paper_count: int) -> tuple[int, list[int]]:
     paper_ids = []
     with SessionLocal.begin() as db:
+        corpus = db.query(CorpusConfig).first()
+        if corpus is None:
+            corpus = CorpusConfig(name="Test corpus", categories=["cs.AI"])
+            db.add(corpus)
+            db.flush()
         entity = Entity(canonical_name=name, type="method", aliases=[])
         db.add(entity)
         db.flush()
@@ -28,6 +33,7 @@ def _create_entity_with_papers(name: str, paper_count: int) -> tuple[int, list[i
             db.add(document)
             db.flush()
             paper_ids.append(document.id)
+            db.add(CorpusDocument(corpus_id=corpus.id, document_id=document.id))
             db.add(
                 Document_Entity(
                     document_id=document.id,
