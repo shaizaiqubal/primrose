@@ -1,3 +1,10 @@
+x-app-environment: &app-environment
+  DATABASE_URL: "postgresql+psycopg://primroses1:password@postgres:5432/primroses1"
+  QDRANT_URL: "http://qdrant:6333"
+  QDRANT_COLLECTION_NAME: document_vectors
+  REDIS_PORT: "6379"
+  JWT_SECRET_FILE: /var/lib/primrose/jwt_secret
+
 services:
   api:
     build: .
@@ -5,6 +12,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      <<: *app-environment
+      REDIS_HOST: cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -16,15 +26,16 @@ services:
       - ./backend:/app/backend
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
+      - app_data:/var/lib/primrose
 
   postgres:
     image: postgres:17
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: primroses1
+      POSTGRES_USER: primroses1
+      POSTGRES_PASSWORD: password
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U primroses1 -d primroses1"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -72,8 +83,11 @@ services:
     env_file:
       - .env
     environment:
+      <<: *app-environment
       REDIS_HOST: cache
       QDRANT_URL: http://qdrant:6333
+    volumes:
+      - app_data:/var/lib/primrose
     depends_on:
       postgres:
         condition: service_healthy
@@ -90,8 +104,10 @@ services:
     env_file:
       - .env
     environment:
+      <<: *app-environment
       REDIS_HOST: cache
-      QDRANT_URL: http://qdrant:6333
+    volumes:
+      - app_data:/var/lib/primrose
     depends_on:
       postgres:
         condition: service_healthy
@@ -108,8 +124,10 @@ services:
     env_file:
       - .env
     environment:
+      <<: *app-environment
       REDIS_HOST: cache
-      QDRANT_URL: http://qdrant:6333
+    volumes:
+      - app_data:/var/lib/primrose
     depends_on:
       postgres:
         condition: service_healthy
@@ -122,3 +140,4 @@ volumes:
   qdrant_data:
   frontend_node_modules:
   cache_data:
+  app_data:

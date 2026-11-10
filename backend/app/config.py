@@ -2,6 +2,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 from datetime import date
+from backend.app.secret_storage import get_or_create_secret
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -13,7 +14,7 @@ else:
 DATABASE_URL = os.getenv("DATABASE_URL")
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+QDRANT_API_KEY = (os.getenv("QDRANT_API_KEY") or "").strip() or None
 QDRANT_COLLECTION_NAME = os.getenv(
     "QDRANT_COLLECTION_NAME",
     "document_vectors",
@@ -25,7 +26,10 @@ REDIS_HOST=os.getenv("REDIS_HOST", "cache")
 REDIS_PORT=int(os.getenv("REDIS_PORT", 6379))
 REDIS_USER=os.getenv("REDIS_USER")
 REDIS_PASSWORD=os.getenv("REDIS_PASSWORD")
-JWT_SECRET=os.getenv("JWT_SECRET")
+JWT_SECRET = get_or_create_secret(
+    os.getenv("JWT_SECRET"),
+    Path(os.getenv("JWT_SECRET_FILE", REPO_ROOT / ".primrose" / "jwt_secret")),
+)
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 
 ARXIV_API_URL = os.getenv("ARXIV_API_URL", "https://export.arxiv.org/api/query")
