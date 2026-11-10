@@ -4,7 +4,7 @@ import hashlib
 from cryptography.fernet import Fernet
 from sqlalchemy import select
 
-from backend.app.config import GEMINI_API_KEY, JWT_SECRET
+from backend.app.config import JWT_SECRET
 from backend.app.database import SessionLocal
 from backend.app.models import AppSetting
 
@@ -18,11 +18,11 @@ def _fernet() -> Fernet:
     return Fernet(key)
 
 
-def get_gemini_api_key() -> str | None:
+def get_gemini_api_key() -> str:
     with SessionLocal() as db:
         setting = db.get(AppSetting, GEMINI_KEY)
         if setting is None:
-            return GEMINI_API_KEY
+            raise RuntimeError("Gemini API key is not configured")
         return _fernet().decrypt(setting.encrypted_value.encode()).decode()
 
 
