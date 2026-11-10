@@ -99,6 +99,24 @@ services:
         condition: service_started
       qdrant:
         condition: service_started
+
+  topic-naming-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: python -m backend.services.topic_naming_worker
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: cache
+      QDRANT_URL: http://qdrant:6333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      qdrant:
+        condition: service_started
 volumes:
   postgres_data:
   qdrant_data:

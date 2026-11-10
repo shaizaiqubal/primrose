@@ -3,7 +3,7 @@ import os
 import socket
 import time
 
-from redis.exceptions import TimeoutError as RedisTimeoutError
+from redis.exceptions import ResponseError, TimeoutError as RedisTimeoutError
 from backend.app.database import SessionLocal
 from backend.app.models import Documents
 from backend.services.embedding_queue import (
@@ -76,14 +76,20 @@ def run_worker() -> None:
     ensure_consumer_group(redis_client)
     logging.info("%s is waiting for embedding jobs", CONSUMER_NAME)
     while True:
-        autoclaimed = redis_client.xautoclaim(
-            name=EMBEDDING_STREAM_NAME,
-            groupname=EMBEDDING_CONSUMER_GROUP,
-            consumername=CONSUMER_NAME,
-            min_idle_time=PENDING_IDLE_MS,
-            start_id="0-0",
-            count=1,
-        )
+        try:
+            autoclaimed = redis_client.xautoclaim(
+                name=EMBEDDING_STREAM_NAME,
+                groupname=EMBEDDING_CONSUMER_GROUP,
+                consumername=CONSUMER_NAME,
+                min_idle_time=PENDING_IDLE_MS,
+                start_id="0-0",
+                count=1,
+            )
+        except ResponseError as exc:
+            if "NOGROUP" not in str(exc):
+                raise
+            ensure_consumer_group(redis_client)
+            continue
         pending = autoclaimed[1]
         for message_id, fields in pending:
             handle_message(redis_client, message_id, fields)
@@ -98,6 +104,11 @@ def run_worker() -> None:
             )
         except RedisTimeoutError:
             logging.debug("Redis stream poll timed out; continuing to wait")
+            continue
+        except ResponseError as exc:
+            if "NOGROUP" not in str(exc):
+                raise
+            ensure_consumer_group(redis_client)
             continue
 
         for _stream_name, entries in messages:

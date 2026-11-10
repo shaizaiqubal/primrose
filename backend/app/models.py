@@ -20,6 +20,7 @@ class Documents(Base):
     created_at : Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, default=None)
     embedded : Mapped[bool] = mapped_column(default=False)
+    entities_processed: Mapped[bool] = mapped_column(default=False, nullable=False)
     submitted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     arxiv_updated_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -41,6 +42,14 @@ class CorpusConfig(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    encrypted_value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
 class CorpusDocument(Base):
     __tablename__ = "corpus_documents"
 
@@ -55,6 +64,7 @@ class CorpusSync(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     corpus_id: Mapped[int] = mapped_column(ForeignKey("corpus_configs.id", ondelete="CASCADE"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    stage: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     papers_discovered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     papers_inserted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     existing_papers_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

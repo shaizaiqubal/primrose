@@ -4,20 +4,14 @@ import redis
 import json
 from pathlib import Path
 from fastapi.encoders import jsonable_encoder
-from google import genai
 from pydantic import BaseModel, model_validator
 from backend.app.models import Documents
 from backend.services.search import RankedDocument
-from backend.app.config import GEMINI_API_KEY
+from backend.services.app_settings import get_gemini_api_key
+from backend.services.gemini import create_gemini_client, run_gemini_request
 from backend.app.cache import cache, TTL
 
 logger = logging.getLogger(__name__)
-
-try:
-    client = genai.Client(api_key=GEMINI_API_KEY)
-except Exception as exc:
-    client = None
-    logger.exception("Failed to initialize Gemini client: %s", exc)
 
 SYSTEM_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "system_prompt.txt"
 
@@ -109,25 +103,30 @@ def recommendation_engine(query: Documents, candidates: list[RankedDocument]) ->
 
         payload = RecommendInput(query_paper=query_doc, candidates=candidate_docs)
 
-        if client is None:
+        api_key = get_gemini_api_key()
+        if not api_key:
             raise RuntimeError("Gemini client is not initialized")
+        client = create_gemini_client(api_key)
 
         start_time = time.perf_counter()
-        interaction = client.interactions.create(
-            model="gemini-3.1-flash-lite",
-            input=f"""
-                Below is the current paper and a list of candidate papers.
+        interaction = run_gemini_request(
+            lambda: client.interactions.create(
+                model="gemini-3.1-flash-lite",
+                input=f"""
+                    Below is the current paper and a list of candidate papers.
 
-                The data is provided as JSON.
+                    The data is provided as JSON.
 
-                {payload.model_dump_json(indent=2)}
-                """,
-            system_instruction=system_prompt,
-            response_format={
-                "type": "text",
-                "mime_type": "application/json",
-                "schema": RecomendationResponse.model_json_schema(),
-            },
+                    {payload.model_dump_json(indent=2)}
+                    """,
+                system_instruction=system_prompt,
+                response_format={
+                    "type": "text",
+                    "mime_type": "application/json",
+                    "schema": RecomendationResponse.model_json_schema(),
+                },
+            ),
+            "recommendation generation",
         )
         latency_seconds = time.perf_counter() - start_time
         logger.info(

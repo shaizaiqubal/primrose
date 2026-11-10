@@ -14,6 +14,7 @@ class Document(BaseModel):
 class DocumentResponse(BaseModel):
     id: int
     arxiv_id: str | None = None
+    uploaded_by: int | None = None
     title: str
     abstract: str
     authors: str | None
@@ -93,6 +94,14 @@ class UserResponse(BaseModel):
         "from_attributes": True
     }
 
+
+class GeminiSettingsRequest(BaseModel):
+    api_key: str = Field(min_length=1, max_length=512)
+
+
+class GeminiSettingsResponse(BaseModel):
+    configured: bool
+
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
@@ -143,6 +152,7 @@ class CorpusSyncResponse(BaseModel):
     id: int
     corpus_id: int
     status: str
+    stage: str
     papers_discovered: int
     papers_inserted: int
     existing_papers_skipped: int
@@ -153,4 +163,8 @@ class CorpusSyncResponse(BaseModel):
     error_details: str | None
     upper_cutoff: datetime | None
     created_at: datetime
+    documents_total: int = 0
+    embeddings_completed: int = 0
+    entities_completed: int = 0
+    topics_created: int = 0
     model_config = {"from_attributes": True}

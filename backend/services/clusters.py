@@ -1,7 +1,7 @@
-from google import genai
 from pydantic import BaseModel
 import argparse
 
+from qdrant_client.models import Filter, HasIdCondition
 from sqlalchemy import select
 
 from backend.app.config import (
@@ -9,12 +9,14 @@ from backend.app.config import (
     QDRANT_COLLECTION_NAME,
     QDRANT_PORT,
     QDRANT_URL,
-    GEMINI_API_KEY
 )
 
 from backend.app.database import SessionLocal
-from backend.app.models import Documents, Document_Topics, Topics
+from backend.app.models import CorpusDocument, Documents, Document_Topics, Topics
+from backend.app.cache import cache
 from backend.services.search import fetch_candidates
+from backend.services.app_settings import get_gemini_api_key
+from backend.services.gemini import create_gemini_client, run_gemini_request
 from qdrant_client import QdrantClient
 
 client = QdrantClient(
@@ -24,11 +26,14 @@ client = QdrantClient(
     check_compatibility=False
 )
 
-try:
-    g_client = genai.Client(api_key=GEMINI_API_KEY)
-except Exception as exc:
-    g_client = None
-    print("Gemini failed")
+
+def _clear_topic_cache(corpus_id: int) -> None:
+    try:
+        keys = list(cache.scan_iter(f"topics:{corpus_id}:*"))
+        if keys:
+            cache.delete(*keys)
+    except Exception:
+        print(f"Unable to clear topic cache for corpus {corpus_id}")
 
 def get_unnamed_clusters(corpus_id: int):
     print("Fetching unnamed clusters...")
@@ -47,9 +52,18 @@ def get_ids(corpus_id: int, cluster: int):
         centroid = db.execute(stmt).scalar_one_or_none()
 
     if centroid is not None:
+        with SessionLocal() as db:
+            corpus_document_ids = list(
+                db.execute(
+                    select(CorpusDocument.document_id).where(CorpusDocument.corpus_id == corpus_id)
+                ).scalars().all()
+            )
+        if not corpus_document_ids:
+            return []
         result = client.query_points( #type:ignore
             collection_name=QDRANT_COLLECTION_NAME,
             query= list(centroid),
+            query_filter=Filter(must=[HasIdCondition(has_id=corpus_document_ids)]),
             limit=5,
             with_vectors=False,
             with_payload=False
@@ -64,14 +78,19 @@ def get_ids(corpus_id: int, cluster: int):
 
 def get_clustername(ids):
     print(f"Generating cluster name from {len(ids or [])} representative papers...")
+    api_key = get_gemini_api_key()
+    if not api_key:
+        raise RuntimeError("Gemini client is not initialized")
+    g_client = create_gemini_client(api_key)
     papers = fetch_candidates(ids)
     papernames = [paper.title for paper in papers]
-    interaction = g_client.interactions.create( # type: ignore
-                model="gemini-3.1-flash-lite",
-                input=f"""
-                    Here are five representative papers from the same research cluster: {papernames}
-                    """,
-                system_instruction='''
+    interaction = run_gemini_request(
+        lambda: g_client.interactions.create( # type: ignore
+                    model="gemini-3.1-flash-lite",
+                    input=f"""
+                        Here are five representative papers from the same research cluster: {papernames}
+                        """,
+                    system_instruction='''
                             You are a research taxonomy assistant.
 
                             You are given the titles of papers that are representative of a single research cluster.
@@ -91,11 +110,12 @@ def get_clustername(ids):
                             Do not invent details that are unsupported by the papers.
 
                             Return only the topic name.
-                                    '''
-                
-            )
+                                        ''',
+                ),
+        "topic naming",
+    )
 
-    cluster_name = interaction.output_text
+    cluster_name = interaction.output_text.strip()
     print(f"Generated cluster name: {cluster_name}")
     return cluster_name
 
@@ -111,6 +131,7 @@ def name_clusters(corpus_id: int) -> None:
             if topic:
                 topic.cluster_name = cluster_name
                 db.commit()
+                _clear_topic_cache(corpus_id)
                 print(f"Saved cluster name for corpus {corpus_id} cluster {cluster}")
             else:
                 print(f"Topic record not found for corpus {corpus_id} cluster {cluster}")

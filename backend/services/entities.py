@@ -5,14 +5,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Sequence
 
-from google import genai
 from pydantic import BaseModel
 from qdrant_client.models import PointStruct
 from sqlalchemy import delete, func, select
 
-from backend.app.config import GEMINI_API_KEY
 from backend.app.database import SessionLocal
-from backend.app.models import Document_Entity, Documents, Entity
+from backend.app.models import CorpusDocument, Document_Entity, Documents, Entity
 from backend.app.schemas import (
     DocumentResponse,
     EntityPageResponse,
@@ -20,6 +18,8 @@ from backend.app.schemas import (
     EntitySearchResult,
 )
 from backend.services.embed import get_model
+from backend.services.app_settings import get_gemini_api_key
+from backend.services.gemini import create_gemini_client, run_gemini_request
 from backend.services.vector_store import client, ensure_collection
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,9 @@ class ExtractionResult(BaseModel):
     entities: list[ExtractedEntity]
 
 
-try:
-    extraction_client = genai.Client(api_key=GEMINI_API_KEY)
-except Exception:
-    extraction_client = None
-    logger.exception("Failed to initialize Gemini client")
+def get_extraction_client():
+    api_key = get_gemini_api_key()
+    return create_gemini_client(api_key) if api_key else None
 
 
 @lru_cache(maxsize=1)
@@ -67,24 +65,28 @@ def canonicalize_entity_name(name: str) -> str:
 
 
 def name_entities(title: str, abstract: str) -> ExtractionResult:
+    extraction_client = get_extraction_client()
     if extraction_client is None:
         raise RuntimeError("Gemini client is not initialized")
 
     start_time = time.perf_counter()
-    interaction = extraction_client.interactions.create(
-        model="gemini-3.1-flash-lite",
-        input=f"""
-            Below is the current paper and its abstract:
-            {title}
+    interaction = run_gemini_request(
+        lambda: extraction_client.interactions.create(
+            model="gemini-3.1-flash-lite",
+            input=f"""
+                Below is the current paper and its abstract:
+                {title}
 
-            {abstract}
-            """,
-        system_instruction=system_prompt,
-        response_format={
-            "type": "text",
-            "mime_type": "application/json",
-            "schema": ExtractionResult.model_json_schema(),
-        },
+                {abstract}
+                """,
+            system_instruction=system_prompt,
+            response_format={
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": ExtractionResult.model_json_schema(),
+            },
+        ),
+        "entity extraction",
     )
     logger.info(
         "Gemini entity extraction completed in %.3f seconds",
@@ -179,8 +181,14 @@ def get_entities(
     page_size: int,
     entity_type: str | None = None,
 ) -> EntityPageResponse:
-    count_statement = select(func.count()).select_from(Entity)
-    entities_statement = select(Entity)
+    entity_in_corpus = (
+        select(Document_Entity.entity_id)
+        .join(CorpusDocument, CorpusDocument.document_id == Document_Entity.document_id)
+        .where(Document_Entity.entity_id == Entity.id)
+        .exists()
+    )
+    count_statement = select(func.count()).select_from(Entity).where(entity_in_corpus)
+    entities_statement = select(Entity).where(entity_in_corpus)
     if entity_type:
         count_statement = count_statement.where(Entity.type == entity_type)
         entities_statement = entities_statement.where(Entity.type == entity_type)
@@ -221,7 +229,14 @@ def search_entities(query: str, limit: int) -> list[EntitySearchResult]:
         entities_by_id = {
             entity.id: entity
             for entity in db.execute(
-                select(Entity).where(Entity.id.in_(ranked_ids))
+                select(Entity)
+                .where(Entity.id.in_(ranked_ids))
+                .where(
+                    select(Document_Entity.entity_id)
+                    .join(CorpusDocument, CorpusDocument.document_id == Document_Entity.document_id)
+                    .where(Document_Entity.entity_id == Entity.id)
+                    .exists()
+                )
             ).scalars()
         }
     return [
@@ -241,6 +256,7 @@ def get_entity_papers(entity_id: int) -> list[DocumentResponse]:
     statement = (
         select(Documents)
         .join(Document_Entity, Document_Entity.document_id == Documents.id)
+        .join(CorpusDocument, CorpusDocument.document_id == Documents.id)
         .where(Document_Entity.entity_id == entity_id)
         .order_by(Documents.id)
     )
@@ -375,6 +391,10 @@ def process_document_entities(document: Documents) -> list[int]:
         )
 
     index_entity_vectors(new_entities)
+    with SessionLocal.begin() as db:
+        stored_document = db.get(Documents, document.id)
+        if stored_document is not None:
+            stored_document.entities_processed = True
     return entity_ids
 
 

@@ -52,6 +52,7 @@ def run_sync(sync_id: int, client: ArxivClient | None = None) -> None:
             if corpus is None:
                 raise LookupError("Corpus not found")
             sync.status = "running"
+            sync.stage = "downloading"
             sync.started_at = now
             sync.upper_cutoff = now
             categories = list(corpus.categories)
@@ -69,10 +70,11 @@ def run_sync(sync_id: int, client: ArxivClient | None = None) -> None:
         seen: set[str] = set()
         document_ids: list[int] = []
         with SessionLocal() as db:
-            current_count = db.execute(
+            document_ids = list(db.execute(
                 select(CorpusDocument.document_id).where(CorpusDocument.corpus_id == corpus_id)
-            ).all()
-        added_count = len(current_count)
+            ).scalars())
+            current_count = len(document_ids)
+        added_count = current_count
         while True:
             if added_count >= document_limit:
                 break
@@ -89,16 +91,30 @@ def run_sync(sync_id: int, client: ArxivClient | None = None) -> None:
                 break
             if len(page) < ARXIV_PAGE_SIZE:
                 break
+        with SessionLocal.begin() as db:
+            sync = db.get(CorpusSync, sync_id)
+            if sync is not None:
+                sync.stage = "embedding"
         _wait_for_embeddings(document_ids)
+        with SessionLocal.begin() as db:
+            sync = db.get(CorpusSync, sync_id)
+            if sync is not None:
+                sync.stage = "topics"
         subprocess.run([sys.executable, "-m", "backend.services.topic_worker", str(corpus_id)], check=True)
+        with SessionLocal.begin() as db:
+            sync = db.get(CorpusSync, sync_id)
+            if sync is not None:
+                sync.stage = "entities"
+        _wait_for_entities(document_ids)
         with SessionLocal() as db:
             sync = db.get(CorpusSync, sync_id)
             corpus = db.get(CorpusConfig, sync.corpus_id) if sync else None
             if sync is None or corpus is None:
                 return
             sync.status = "completed"
+            sync.stage = "completed"
             sync.completed_at = datetime.now(timezone.utc)
-            corpus.last_synced = now
+            corpus.last_synced = sync.completed_at
             corpus.end_date = end_date
             db.commit()
     except Exception as exc:
@@ -107,6 +123,7 @@ def run_sync(sync_id: int, client: ArxivClient | None = None) -> None:
             sync = db.get(CorpusSync, sync_id)
             if sync:
                 sync.status = "failed"
+                sync.stage = "failed"
                 sync.completed_at = datetime.now(timezone.utc)
                 sync.errors_encountered += 1
                 sync.error_details = str(exc)[:4000]
@@ -118,7 +135,7 @@ def _persist_page(sync_id: int, papers, remaining_capacity: int) -> tuple[list[i
     added_count = 0
     with SessionLocal() as db:
         sync = db.get(CorpusSync, sync_id)
-        if sync is None:
+        if sync is None or sync.status not in {"pending", "running"}:
             return [], 0
         sync.papers_discovered += len(papers)
         corpus_id = sync.corpus_id
@@ -132,9 +149,6 @@ def _persist_page(sync_id: int, papers, remaining_capacity: int) -> tuple[list[i
                 db.flush()
                 existing = document
                 sync.papers_inserted += 1
-                publish_entity_job(existing.id)
-                publish_embedding_job(existing.id)
-                sync.processing_jobs_enqueued += 2
                 new_document_ids.append(existing.id)
             else:
                 sync.existing_papers_skipped += 1
@@ -143,6 +157,16 @@ def _persist_page(sync_id: int, papers, remaining_capacity: int) -> tuple[list[i
                 db.add(CorpusDocument(corpus_id=corpus_id, document_id=existing.id))
                 added_count += 1
         db.commit()
+    # Publish only after the transaction commits. Workers can consume jobs
+    # immediately, and must be able to see the newly inserted documents.
+    for document_id in new_document_ids:
+        publish_entity_job(document_id)
+        publish_embedding_job(document_id)
+    if new_document_ids:
+        with SessionLocal.begin() as db:
+            sync = db.get(CorpusSync, sync_id)
+            if sync is not None:
+                sync.processing_jobs_enqueued += 2 * len(new_document_ids)
     return new_document_ids, added_count
 
 
@@ -163,4 +187,23 @@ def _wait_for_embeddings(document_ids: list[int], timeout_seconds: int = 3600) -
             return
         time.sleep(5)
     raise TimeoutError("Timed out waiting for corpus embeddings")
+
+
+def _wait_for_entities(document_ids: list[int], timeout_seconds: int = 3600) -> None:
+    """Wait for entity workers to finish the batch before completing sync."""
+    if not document_ids:
+        return
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        with SessionLocal() as db:
+            remaining = db.execute(
+                select(Documents.id).where(
+                    Documents.id.in_(document_ids),
+                    Documents.entities_processed.is_(False),
+                )
+            ).scalars().first()
+        if remaining is None:
+            return
+        time.sleep(5)
+    raise TimeoutError("Timed out waiting for corpus entities")
 

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.config import FRONTEND_URL
-from backend.app.routers import auth, corpora, documents, entities, recommendations, topics, user
+from backend.app.routers import auth, corpora, documents, entities, recommendations, settings, topics, user
 
 
 logging.basicConfig(
@@ -39,3 +39,4 @@ app.include_router(recommendations.router)
 app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(corpora.router)
+app.include_router(settings.router)

@@ -1,14 +1,16 @@
 from datetime import date, datetime, time, timezone
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, exists, func, select
 
 from backend.app.database import SessionLocal
-from backend.app.models import CorpusConfig, CorpusDocument, CorpusSync, Documents
+from backend.app.models import Bookmark, CorpusConfig, CorpusDocument, CorpusSync, Document_Entity, Document_Topics, Documents, Entity, Topics
 from backend.app.config import ARXIV_DEFAULT_START_DATE
 from backend.app.schemas import CorpusCreate, CorpusResponse, CorpusSyncRequest, CorpusSyncResponse, CorpusUpdate
 from backend.services.arxiv_client import validate_categories
 from backend.services.corpus_sync import SyncAlreadyRunning, create_sync
+from backend.services.vector_store import COLLECTION_NAME, client as vector_client
+from qdrant_client.models import PointIdsList
 
 router = APIRouter(prefix="/corpora", tags=["corpora"])
 
@@ -38,6 +40,47 @@ def _corpus_response(db, corpus: CorpusConfig) -> dict:
         "created_at": corpus.created_at,
         "updated_at": corpus.updated_at,
         "document_count": document_count,
+    }
+
+
+def _sync_response(db, sync: CorpusSync) -> dict:
+    total = db.execute(
+        select(func.count()).select_from(CorpusDocument).where(CorpusDocument.corpus_id == sync.corpus_id)
+    ).scalar_one()
+    embeddings_completed = db.execute(
+        select(func.count())
+        .select_from(CorpusDocument)
+        .join(Documents, Documents.id == CorpusDocument.document_id)
+        .where(CorpusDocument.corpus_id == sync.corpus_id, Documents.embedded.is_(True))
+    ).scalar_one()
+    entities_completed = db.execute(
+        select(func.count())
+        .select_from(CorpusDocument)
+        .join(Documents, Documents.id == CorpusDocument.document_id)
+        .where(CorpusDocument.corpus_id == sync.corpus_id, Documents.entities_processed.is_(True))
+    ).scalar_one()
+    topics_created = db.execute(
+        select(func.count()).select_from(Topics).where(Topics.corpus_id == sync.corpus_id)
+    ).scalar_one()
+    return {
+        "id": sync.id,
+        "corpus_id": sync.corpus_id,
+        "status": sync.status,
+        "stage": sync.stage,
+        "papers_discovered": sync.papers_discovered,
+        "papers_inserted": sync.papers_inserted,
+        "existing_papers_skipped": sync.existing_papers_skipped,
+        "processing_jobs_enqueued": sync.processing_jobs_enqueued,
+        "errors_encountered": sync.errors_encountered,
+        "started_at": sync.started_at,
+        "completed_at": sync.completed_at,
+        "error_details": sync.error_details,
+        "upper_cutoff": sync.upper_cutoff,
+        "created_at": sync.created_at,
+        "documents_total": total,
+        "embeddings_completed": embeddings_completed,
+        "entities_completed": entities_completed,
+        "topics_created": topics_created,
     }
 
 
@@ -118,7 +161,9 @@ def sync_corpus(corpus_id: int, request: CorpusSyncRequest | None = None):
     with SessionLocal() as db:
         _get_corpus(db, corpus_id)
     try:
-        return create_sync(corpus_id)
+        sync = create_sync(corpus_id)
+        with SessionLocal() as db:
+            return _sync_response(db, db.get(CorpusSync, sync.id))
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except SyncAlreadyRunning as exc:
@@ -132,7 +177,7 @@ def corpus_sync_status(corpus_id: int):
         sync = db.execute(select(CorpusSync).where(CorpusSync.corpus_id == corpus_id).order_by(CorpusSync.id.desc())).scalars().first()
         if sync is None:
             raise HTTPException(status_code=404, detail="No synchronization has been requested")
-        return sync
+        return _sync_response(db, sync)
 
 
 @router.delete("/{corpus_id}")
@@ -141,8 +186,23 @@ def delete_corpus(corpus_id: int):
         corpus = _get_corpus(db, corpus_id)
         active = db.execute(select(CorpusSync).where(CorpusSync.corpus_id == corpus_id, CorpusSync.status.in_(["pending", "running"]))).scalar_one_or_none()
         if active:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot delete a corpus while synchronization is running")
+            # Mark the job cancelled before removing its corpus. The worker
+            # may still acknowledge already-published Redis jobs, but it can
+            # no longer persist anything because the sync/corpus is gone.
+            active.status = "cancelled"
+            active.completed_at = datetime.now(timezone.utc)
+            active.error_details = "Cancelled because the corpus was deleted"
+        document_ids = list(db.execute(select(CorpusDocument.document_id).where(CorpusDocument.corpus_id == corpus_id)).scalars())
+        if document_ids:
+            vector_client.delete(collection_name=COLLECTION_NAME, points_selector=PointIdsList(points=document_ids), wait=True)
+            db.execute(delete(Bookmark).where(Bookmark.document_id.in_(document_ids)))
+            db.execute(delete(Document_Topics).where(Document_Topics.corpus_id == corpus_id))
+            db.execute(delete(CorpusDocument).where(CorpusDocument.corpus_id == corpus_id))
+            db.execute(delete(Documents).where(Documents.id.in_(document_ids)))
+        db.execute(delete(Topics).where(Topics.corpus_id == corpus_id))
+        db.execute(delete(CorpusSync).where(CorpusSync.corpus_id == corpus_id))
         db.delete(corpus)
+        db.execute(delete(Entity).where(~exists(select(Document_Entity.entity_id).where(Document_Entity.entity_id == Entity.id))))
         db.commit()
     return {"message": "Corpus deleted successfully"}
 

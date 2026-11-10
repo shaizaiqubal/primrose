@@ -3,7 +3,7 @@ import os
 import socket
 import time
 
-from redis.exceptions import TimeoutError as RedisTimeoutError
+from redis.exceptions import ResponseError, TimeoutError as RedisTimeoutError
 from sqlalchemy import select
 
 from backend.app.database import SessionLocal
@@ -70,14 +70,20 @@ def run_worker() -> None:
     logging.info("%s is waiting for entity jobs", CONSUMER_NAME)
 
     while True:
-        pending = redis_client.xautoclaim(
-            name=ENTITY_STREAM_NAME,
-            groupname=ENTITY_CONSUMER_GROUP,
-            consumername=CONSUMER_NAME,
-            min_idle_time=PENDING_IDLE_MS,
-            start_id="0-0",
-            count=1,
-        )[1]
+        try:
+            pending = redis_client.xautoclaim(
+                name=ENTITY_STREAM_NAME,
+                groupname=ENTITY_CONSUMER_GROUP,
+                consumername=CONSUMER_NAME,
+                min_idle_time=PENDING_IDLE_MS,
+                start_id="0-0",
+                count=1,
+            )[1]
+        except ResponseError as exc:
+            if "NOGROUP" not in str(exc):
+                raise
+            ensure_consumer_group(redis_client)
+            continue
         for message_id, fields in pending:
             handle_message(redis_client, message_id, fields)
 
@@ -90,6 +96,11 @@ def run_worker() -> None:
                 block=BLOCK_MS,
             )
         except RedisTimeoutError:
+            continue
+        except ResponseError as exc:
+            if "NOGROUP" not in str(exc):
+                raise
+            ensure_consumer_group(redis_client)
             continue
 
         for _stream_name, entries in messages:
