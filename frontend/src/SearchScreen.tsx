@@ -149,7 +149,7 @@ export function SearchScreen() {
         {loading && <SearchSkeleton />}
         {corpusState === 'empty' && !loading && (
           <div className="search-empty search-empty--corpus">
-            <h2>Your corpus is waiting to be built.</h2>
+            <h2>No Corpus Found</h2>
             <p>Create a corpus before searching. It gives Primrose the papers to work from.</p>
             <Link className="button button--primary" to="/corpora/new">Create corpus</Link>
           </div>
@@ -195,8 +195,8 @@ export function SearchScreen() {
         )}
         {!loading && corpusState !== 'empty' && !error && submittedQuery && results.length === 0 && (
           <div className="search-empty">
-            <h2>No papers surfaced for that question.</h2>
-            <p>Try rephrasing it in a little more detail.</p>
+            <h2>No papers found.</h2>
+            <p></p>
           </div>
         )}
         {!loading && results.length > 0 && <PaperResultsLayout browseLinks documents={results.map(({ document }) => document)} label="Papers" onSelect={setSelectedPaperId} selectedPaperId={selectedPaperId} />}

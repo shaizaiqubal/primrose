@@ -12,7 +12,6 @@ function authorSummary(authors: string | null, year: number | null) {
 
 type PaperCardProps = {
   document: Document
-  saved?: boolean
   compact?: boolean
   selected?: boolean
   onSelect?: () => void
@@ -58,7 +57,7 @@ export function PaperActions({ document, saved = false }: { document: Document; 
   </div>
 }
 
-export function PaperCard({ document, saved = false, compact = true, selected = false, onSelect }: PaperCardProps) {
+export function PaperCard({ document, compact = true, selected = false, onSelect }: PaperCardProps) {
   function handleClick(event: MouseEvent<HTMLElement>) {
     if (onSelect && !(event.target as HTMLElement).closest('button, a')) onSelect()
   }
@@ -84,7 +83,6 @@ export function PaperCard({ document, saved = false, compact = true, selected = 
         <p className="paper-card__meta">{authorSummary(document.authors, document.year_published) || 'Paper'}</p>
         <h2 className="paper-card__title"><Link to={`/papers/${document.id}`}>{document.title}</Link></h2>
       </div>
-      <PaperActions document={document} saved={saved} />
     </Card>
   )
 }

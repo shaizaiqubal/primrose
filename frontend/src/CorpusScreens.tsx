@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button, Header } from './components/ui'
-import { createCorpus, deleteCorpus, getApiErrorMessage, getCorpus, getCorpora, syncCorpus, updateCorpus, type Corpus, type CorpusPayload } from './api.ts'
+import { createCorpus, deleteCorpus, getApiErrorMessage, getCorpus, getCorpora, getCorpusSyncStatus, syncCorpus, updateCorpus, type Corpus, type CorpusPayload, type CorpusSync } from './api.ts'
 
 type Category = { id: string; label: string; group: string }
 
@@ -16,13 +16,26 @@ const categoryGroups: Record<string, string> = {
   Economics: 'econ:EM:Econometrics|GN:General Economics|TH:Theoretical Economics',
 }
 
-const taxonomyPrefixes = new Set(['cs', 'stat', 'eess', 'math', 'astro-ph', 'cond-mat', 'nlin', 'physics', 'q-bio', 'q-fin', 'econ'])
-const categories: Category[] = Object.entries(categoryGroups).flatMap(([group, value]) => value.split('|').map((item) => {
-  const parts = item.split(':')
-  const hasSubcategory = parts.length > 2 || taxonomyPrefixes.has(parts[0])
-  const id = hasSubcategory ? `${parts[0]}.${parts[1]}` : parts[0]
-  return { id, label: hasSubcategory ? parts.slice(parts.length > 2 ? 2 : 1).join(':') : parts[1], group }
-}))
+const taxonomyPrefixes = new Set([
+  'cs', 'stat', 'eess', 'math', 'astro-ph', 'cond-mat', 'nlin', 'physics',
+  'q-bio', 'q-fin', 'econ', 'math-ph', 'gr-qc', 'hep-ex', 'hep-lat',
+  'hep-ph', 'hep-th', 'nucl-ex', 'nucl-th',
+])
+const bareCategoryPrefixes = new Set(['math-ph', 'gr-qc', 'hep-ex', 'hep-lat', 'hep-ph', 'hep-th', 'nucl-ex', 'nucl-th'])
+const categories: Category[] = Object.entries(categoryGroups).flatMap(([group, value]) => {
+  let namespace = ''
+  return value.split('|').map((item) => {
+    const parts = item.split(':')
+    const startsNamespace = taxonomyPrefixes.has(parts[0])
+    if (startsNamespace) namespace = parts[0]
+
+    const hasSubcategory = startsNamespace && parts.length > 1 && !bareCategoryPrefixes.has(namespace)
+    const inheritedSubcategory = !startsNamespace && Boolean(namespace) && !bareCategoryPrefixes.has(namespace)
+    const id = hasSubcategory ? `${namespace}.${parts[1]}` : inheritedSubcategory ? `${namespace}.${parts[0]}` : namespace || parts[0]
+    const label = hasSubcategory ? (parts.length > 2 ? parts.slice(2).join(':') : parts[1]) : parts.slice(1).join(':')
+    return { id, label, group }
+  })
+})
 
 const byHints = { submittedDate: 'When the paper first appeared.', lastUpdatedDate: 'When its newest version was posted.', relevance: 'arXiv’s best-match ranking.' }
 const orderHints = { descending: { submittedDate: 'Newest first.', lastUpdatedDate: 'Most recently updated first.', relevance: 'Best match first.' }, ascending: { submittedDate: 'Oldest first.', lastUpdatedDate: 'Least recently updated first.', relevance: 'Weakest match first.' } }
@@ -42,23 +55,68 @@ type FormState = { name: string; categories: string[]; start_date: string; end_d
 const emptyForm: FormState = { name: '', categories: [], start_date: '', end_date: today, document_limit: 2000, sort_by: 'submittedDate', sort_order: 'descending' }
 function fromCorpus(corpus: Corpus): FormState { return { name: corpus.name, categories: corpus.categories, start_date: corpus.start_date ?? '', end_date: corpus.end_date ?? today, document_limit: corpus.document_limit, sort_by: corpus.sort_by, sort_order: corpus.sort_order } }
 
+const syncStageLabels: Record<CorpusSync['stage'], string> = {
+  queued: 'Preparing your corpus',
+  downloading: 'Downloading papers',
+  embedding: 'Generating Qdrant embeddings',
+  topics: 'Making topics',
+  entities: 'Extracting entities',
+  completed: 'Corpus synced',
+  failed: 'Corpus sync failed',
+}
+
+function SyncProgress({ sync }: { sync: CorpusSync | null }) {
+  if (!sync) return null
+  const active = sync.status === 'pending' || sync.status === 'running'
+  const total = Math.max(sync.documents_total, sync.papers_discovered)
+  return <section className="card corpus-progress" aria-live="polite" aria-busy={active}>
+    <div className="corpus-progress__heading"><div><h2>{syncStageLabels[sync.stage] ?? 'Processing corpus'}</h2></div>{active && <span className="corpus-progress__live">Working</span>}</div>
+    <div className="corpus-progress__steps">
+      <p className={sync.stage === 'downloading' ? 'is-current' : sync.papers_discovered > 0 ? 'is-done' : ''}>Papers downloaded <strong>{sync.papers_discovered}</strong></p>
+      <p className={sync.stage === 'embedding' ? 'is-current' : sync.embeddings_completed >= total && total > 0 ? 'is-done' : ''}>Qdrant embeddings <strong>{sync.embeddings_completed} / {total}</strong></p>
+      <p className={sync.stage === 'topics' ? 'is-current' : sync.topics_created > 0 ? 'is-done' : ''}>Topics <strong>{sync.topics_created ? `${sync.topics_created} created` : 'Waiting'}</strong></p>
+      <p className={sync.stage === 'entities' ? 'is-current' : sync.entities_completed >= total && total > 0 ? 'is-done' : ''}>Entities <strong>{sync.entities_completed} / {total}</strong></p>
+    </div>
+    {sync.status === 'completed' && sync.completed_at && <p className="corpus-progress__complete">Last synced {new Date(sync.completed_at).toLocaleString()}</p>}
+    {sync.status === 'failed' && <p className="corpus-error" role="alert">{sync.error_details || 'The corpus sync failed. You can try saving the corpus again.'}</p>}
+  </section>
+}
+
 function CorpusForm({ corpus, mode }: { corpus?: Corpus; mode: 'create' | 'edit' }) {
-  const navigate = useNavigate()
+  const [activeCorpus, setActiveCorpus] = useState<Corpus | null>(corpus ?? null)
   const [form, setForm] = useState<FormState>(corpus ? fromCorpus(corpus) : emptyForm)
   const [original, setOriginal] = useState<FormState | null>(corpus ? fromCorpus(corpus) : null)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [sync, setSync] = useState<CorpusSync | null>(null)
   const isDirty = mode === 'create' || JSON.stringify(form) !== JSON.stringify(original)
   const validation = !form.name.trim() ? 'Give your corpus a name.' : !form.categories.length ? 'Keep at least one category.' : !form.start_date || !form.end_date ? 'Choose a start and end date.' : form.start_date > form.end_date ? 'End date must be after the start date.' : ''
   const changes = useMemo(() => { if (!original) return []; const items: string[] = []; if (form.name !== original.name) items.push(`Renames the corpus to “${form.name}”.`); const removed = original.categories.filter((id) => !form.categories.includes(id)); const added = form.categories.filter((id) => !original.categories.includes(id)); if (removed.length) items.push(`Removes papers from ${removed.join(', ')}.`); if (added.length) items.push(`Adds papers from ${added.join(', ')}.`); if (form.start_date !== original.start_date || form.end_date !== original.end_date) items.push(`Changes the date range to ${form.start_date} through ${form.end_date}.`); if (form.document_limit !== original.document_limit) items.push(`${form.document_limit < original.document_limit ? 'Trims' : 'Raises'} the paper limit from ${original.document_limit.toLocaleString()} to ${form.document_limit.toLocaleString()}.`); if (form.sort_by !== original.sort_by || form.sort_order !== original.sort_order) items.push(`Sorts by ${form.sort_by}, ${form.sort_order}.`); return items }, [form, original])
+  useEffect(() => {
+    if (!activeCorpus) return
+    let cancelled = false
+    let timer: number | undefined
+    async function poll() {
+      try {
+        const next = await getCorpusSyncStatus(activeCorpus.id)
+        if (cancelled) return
+        setSync(next)
+        if (next.status === 'pending' || next.status === 'running') timer = window.setTimeout(() => void poll(), 5000)
+      } catch {
+        // A corpus can exist before its first sync has been requested.
+      }
+    }
+    void poll()
+    return () => { cancelled = true; if (timer) window.clearTimeout(timer) }
+  }, [activeCorpus?.id])
   function update<K extends keyof FormState>(key: K, value: FormState[K]) { setForm((current) => ({ ...current, [key]: value })) }
-  async function submit(event: FormEvent) { event.preventDefault(); setError(validation); if (validation || submitting) return; setSubmitting(true); try { const payload: CorpusPayload = { ...form, source: 'arxiv' }; const saved = mode === 'create' ? await createCorpus(payload) : await updateCorpus(corpus!.id, payload); if (mode === 'create') await syncCorpus(saved.id); setOriginal(fromCorpus(saved)); setForm(fromCorpus(saved)); navigate(mode === 'create' ? `/corpora/${saved.id}/edit` : `/corpora/${saved.id}/edit`, { replace: true, state: { saved: true } }) } catch (requestError) { setError(String(await getApiErrorMessage(requestError, mode === 'create' ? 'We could not create this corpus just now.' : 'We could not save these changes just now.'))); } finally { setSubmitting(false) } }
-  return <CorpusLayout><main className="corpus-page"><Link className="corpus-back" to="/corpora">Back to corpora</Link><header><h1>{mode === 'create' ? 'Build your corpus.' : 'Edit corpus.'}</h1><p>{mode === 'create' ? 'Pick the arXiv categories and dates you care about. We’ll pull the papers in for you.' : 'Change what your corpus pulls from arXiv. Anything that removes papers is flagged before it’s saved.'}</p></header><form className="corpus-form" onSubmit={(event) => void submit(event)} noValidate><label className="corpus-field"><span>Corpus name</span><input maxLength={60} onChange={(event) => update('name', event.target.value)} placeholder="e.g. LiDAR segmentation, 2023–2025" value={form.name} /></label><div className="corpus-field"><span>Categories</span><CategoryPicker selected={form.categories} onChange={(value) => update('categories', value)} /></div><div className="corpus-pair"><label className="corpus-field"><span>Start date</span><input max={today} min="1991-01-01" onChange={(event) => update('start_date', event.target.value)} type="date" value={form.start_date} /></label><label className="corpus-field"><span>End date</span><input max={today} min="1991-01-01" onChange={(event) => update('end_date', event.target.value)} type="date" value={form.end_date} /></label></div><div className="corpus-pair"><label className="corpus-field"><span>Sort by</span><select onChange={(event) => update('sort_by', event.target.value as FormState['sort_by'])} value={form.sort_by}><option value="submittedDate">Date submitted</option><option value="lastUpdatedDate">Last updated</option><option value="relevance">Relevance</option></select><small>{byHints[form.sort_by]}</small></label><label className="corpus-field"><span>Order</span><select onChange={(event) => update('sort_order', event.target.value as FormState['sort_order'])} value={form.sort_order}><option value="descending">Descending</option><option value="ascending">Ascending</option></select><small>{orderHints[form.sort_order][form.sort_by]}</small></label></div><div className="card corpus-count"><span>Number of papers</span><strong>{form.document_limit.toLocaleString()}</strong><input max="10000" min="500" onChange={(event) => update('document_limit', Number(event.target.value))} step="500" type="range" value={form.document_limit} /><div><small>500</small><small>10,000</small></div></div>{mode === 'edit' && <section className="card corpus-review"><h2>Review changes</h2>{changes.length ? changes.map((change) => <p key={change}>{change}</p>) : <p className="muted-copy">No changes yet.</p>}</section>}{error && <p className="corpus-error" role="alert">{error}</p>}<div className="corpus-actions"><Button disabled={!isDirty || !!validation || submitting} type="submit" variant="primary">{submitting ? 'Saving' : mode === 'create' ? 'Create corpus' : 'Save changes'}</Button>{mode === 'edit' && <Button disabled={!isDirty || submitting} onClick={() => { setForm(original!); setError('') }} type="button">Discard changes</Button>}</div></form>{mode === 'edit' && <DeleteCorpus id={corpus!.id} name={corpus!.name} />}</main></CorpusLayout>
+  async function submit(event: FormEvent) { event.preventDefault(); setError(validation); if (validation || submitting) return; setSubmitting(true); try { const payload: CorpusPayload = { ...form, source: 'arxiv' }; const saved = mode === 'create' ? await createCorpus(payload) : await updateCorpus(corpus!.id, payload); const syncStatus = await syncCorpus(saved.id); setActiveCorpus(saved); setSync(syncStatus); setOriginal(fromCorpus(saved)); setForm(fromCorpus(saved)) } catch (requestError) { setError(String(await getApiErrorMessage(requestError, mode === 'create' ? 'We could not create this corpus just now.' : 'We could not save these changes just now.'))); } finally { setSubmitting(false) } }
+  return <CorpusLayout><main className="corpus-page"><Link className="corpus-back" to="/">Back to home</Link><header><h1>{mode === 'create' ? 'Build your corpus.' : 'Edit corpus.'}</h1><p>{mode === 'create' ? 'Pick the arXiv categories and dates you care about. We’ll pull the papers in for you.' : 'Change what your corpus pulls from arXiv. Anything that removes papers is flagged before it’s saved.'}</p></header><SyncProgress sync={sync} /><form className="corpus-form" onSubmit={(event) => void submit(event)} noValidate><label className="corpus-field"><span>Corpus name</span><input maxLength={60} onChange={(event) => update('name', event.target.value)} placeholder="e.g. LiDAR segmentation, 2023–2025" value={form.name} /></label><div className="corpus-field"><span>Categories</span><CategoryPicker selected={form.categories} onChange={(value) => update('categories', value)} /></div><div className="corpus-pair"><label className="corpus-field"><span>Start date</span><input max={today} min="1991-01-01" onChange={(event) => update('start_date', event.target.value)} type="date" value={form.start_date} /></label><label className="corpus-field"><span>End date</span><input max={today} min="1991-01-01" onChange={(event) => update('end_date', event.target.value)} type="date" value={form.end_date} /></label></div><div className="corpus-pair"><label className="corpus-field"><span>Sort by</span><select onChange={(event) => update('sort_by', event.target.value as FormState['sort_by'])} value={form.sort_by}><option value="submittedDate">Date submitted</option><option value="lastUpdatedDate">Last updated</option><option value="relevance">Relevance</option></select><small>{byHints[form.sort_by]}</small></label><label className="corpus-field"><span>Order</span><select onChange={(event) => update('sort_order', event.target.value as FormState['sort_order'])} value={form.sort_order}><option value="descending">Descending</option><option value="ascending">Ascending</option></select><small>{orderHints[form.sort_order][form.sort_by]}</small></label></div><div className="card corpus-count"><span>Number of papers</span><strong>{form.document_limit.toLocaleString()}</strong><input max="10000" min="500" onChange={(event) => update('document_limit', Number(event.target.value))} step="500" type="range" value={form.document_limit} /><div><small>500</small><small>10,000</small></div></div>{mode === 'edit' && <section className="card corpus-review"><h2>Review changes</h2>{changes.length ? changes.map((change) => <p key={change}>{change}</p>) : <p className="muted-copy">No changes yet.</p>}</section>}{error && <p className="corpus-error" role="alert">{error}</p>}<div className="corpus-actions"><Button disabled={!isDirty || !!validation || submitting} type="submit" variant="primary">{submitting ? 'Saving' : mode === 'create' ? 'Create corpus' : 'Save changes'}</Button>{mode === 'edit' && <Button disabled={!isDirty || submitting} onClick={() => { setForm(original!); setError('') }} type="button">Discard changes</Button>}</div></form>{mode === 'edit' && <DeleteCorpus id={(activeCorpus ?? corpus!).id} name={(activeCorpus ?? corpus!).name} />}</main></CorpusLayout>
 }
 
-function DeleteCorpus({ id, name }: { id: number; name: string }) { const navigate = useNavigate(); const [confirming, setConfirming] = useState(false); const [typed, setTyped] = useState(''); const [error, setError] = useState(''); async function remove() { if (typed !== name) return; try { await deleteCorpus(id); navigate('/corpora', { replace: true }) } catch (requestError) { setError(String(await getApiErrorMessage(requestError, 'We could not delete this corpus just now.'))); setConfirming(false) } } return <section className="corpus-delete"><div><h2>Delete corpus</h2><p>Deletes this corpus and every paper pulled into it. Papers you saved or uploaded stay in your library.</p></div>{confirming ? <div className="corpus-confirm"><p>Type <strong>{name}</strong> to confirm.</p><input aria-label="Corpus name confirmation" onChange={(event) => setTyped(event.target.value)} value={typed} /><div><Button onClick={() => setConfirming(false)} type="button">Cancel</Button><Button disabled={typed !== name} onClick={() => void remove()} type="button">Delete corpus</Button></div></div> : <Button onClick={() => setConfirming(true)} type="button">Delete corpus…</Button>}{error && <p className="corpus-error" role="alert">{error}</p>}</section> }
+function DeleteCorpus({ id, name }: { id: number; name: string }) { const navigate = useNavigate(); const [confirming, setConfirming] = useState(false); const [typed, setTyped] = useState(''); const [error, setError] = useState(''); async function remove() { if (typed !== name) return; try { await deleteCorpus(id); navigate('/corpora', { replace: true }) } catch (requestError) { setError(String(await getApiErrorMessage(requestError, 'We could not delete this corpus just now.'))); setConfirming(false) } } return <section className="corpus-delete"><div><h2>Delete corpus</h2><p>Stops any active sync and deletes this corpus, every paper pulled into it, its topics, entities, bookmarks, and stored vectors.</p></div>{confirming ? <div className="corpus-confirm"><p>Type <strong>{name}</strong> to confirm.</p><input aria-label="Corpus name confirmation" onChange={(event) => setTyped(event.target.value)} value={typed} /><div><Button onClick={() => setConfirming(false)} type="button">Cancel</Button><Button disabled={typed !== name} onClick={() => void remove()} type="button">Delete corpus</Button></div></div> : <Button onClick={() => setConfirming(true)} type="button">Delete corpus…</Button>}{error && <p className="corpus-error" role="alert">{error}</p>}</section> }
 
 export function CorporaScreen() { const navigate = useNavigate(); const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading'); useEffect(() => { void getCorpora().then((items) => { navigate(items[0] ? `/corpora/${items[0].id}/edit` : '/corpora/new', { replace: true }) }).catch(() => setState('error')) }, [navigate]); return <CorpusLayout><main className="corpus-page"><h1>Corpora.</h1>{state === 'loading' ? <p className="muted-copy">Loading your corpus…</p> : <div className="state-card" role="alert"><h2>We could not load your corpus.</h2><p>Try again, or start a new corpus.</p><Link className="button button--primary" to="/corpora/new">Build a corpus</Link></div>}</main></CorpusLayout> }
 
 export function CreateCorpusScreen() { return <CorpusForm mode="create" /> }
-export function EditCorpusScreen() { const { corpusId } = useParams(); const id = Number(corpusId); const [corpus, setCorpus] = useState<Corpus | null>(null); const [error, setError] = useState(''); useEffect(() => { if (Number.isInteger(id)) void getCorpus(id).then(setCorpus).catch((requestError) => setError(getApiErrorMessage(requestError, 'We could not load this corpus just now.'))) }, [id]); if (error) return <CorpusLayout><main className="corpus-page"><div className="state-card" role="alert"><h2>We could not open this corpus.</h2><p>{error}</p><Link className="button button--primary" to="/corpora">Back to corpora</Link></div></main></CorpusLayout>; return corpus ? <CorpusForm corpus={corpus} mode="edit" /> : <CorpusLayout><main className="corpus-page"><p className="muted-copy">Loading your corpus…</p></main></CorpusLayout> }
+export function EditCorpusScreen() { const { corpusId } = useParams(); const id = Number(corpusId); const [corpus, setCorpus] = useState<Corpus | null>(null); const [error, setError] = useState(''); useEffect(() => { if (Number.isInteger(id)) void getCorpus(id).then(setCorpus).catch((requestError) => setError(getApiErrorMessage(requestError, 'We could not load this corpus just now.'))) }, [id]); if (error) return <CorpusLayout><main className="corpus-page"><div className="state-card" role="alert"><h2>We could not open this corpus.</h2><p>{error}</p><Link className="button button--primary" to="/">Back to home</Link></div></main></CorpusLayout>; return corpus ? <CorpusForm corpus={corpus} mode="edit" /> : <CorpusLayout><main className="corpus-page"><p className="muted-copy">Loading your corpus…</p></main></CorpusLayout> }

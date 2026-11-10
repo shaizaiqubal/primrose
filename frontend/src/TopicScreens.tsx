@@ -21,7 +21,7 @@ export function TopicsScreen() {
   }, [])
 
   const visibleTopics = useMemo(() => {
-    const filtered = topics.filter((topic) => (topic.topic_name ?? '').toLowerCase().includes(filter.toLowerCase()))
+    const filtered = topics.filter((topic) => topic.topic_name && topic.topic_name.toLowerCase().includes(filter.toLowerCase()))
     return [...filtered].sort((first, second) => {
       if (sort === 'fewest') return first.paper_count - second.paper_count
       if (sort === 'alphabetical') return (first.topic_name ?? '').localeCompare(second.topic_name ?? '')
@@ -48,8 +48,8 @@ export function TopicsScreen() {
           </label>
         </div>
         {loading && <div className="topic-rows" aria-busy="true">{[0, 1, 2, 3].map((key) => <div className="topic-row-skeleton" key={key} />)}</div>}
-        {!loading && error && <StateCard title="Topics are unavailable just now." message="" onRetry={() => { setLoading(true); setError(''); void getTopics().then(setTopics).catch(() => setError('We could not load topics just now.')).finally(() => setLoading(false)) }} />}
-        {!loading && !error && visibleTopics.length === 0 && <p className="quiet-empty">No topics match that filter.</p>}
+        {!loading && error && <StateCard title="No topics available." message="" onRetry={() => { setLoading(true); setError(''); void getTopics().then(setTopics).catch(() => setError('We could not load topics just now.')).finally(() => setLoading(false)) }} />}
+        {!loading && !error && visibleTopics.length === 0 && <p className="quiet-empty">{topics.length > 0 ? 'Topic names are being prepared.' : 'No topics match that filter.'}</p>}
         {!loading && !error && visibleTopics.length > 0 && (
           <div className="topic-rows">
             {visibleTopics.map((topic) => (

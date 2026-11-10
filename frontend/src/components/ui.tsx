@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 
 type ButtonVariant = 'primary' | 'ghost' | 'icon'
@@ -28,11 +28,11 @@ export function Chip({ className = '', selected = false, ...props }: ChipProps) 
 type CardProps = {
   children: ReactNode
   className?: string
-  as?: 'article' | 'section' | 'div'
-}
+  as?: 'article' | 'section' | 'div' | 'aside'
+} & HTMLAttributes<HTMLElement>
 
-export function Card({ as: Tag = 'article', children, className = '' }: CardProps) {
-  return <Tag className={`card ${className}`.trim()}>{children}</Tag>
+export function Card({ as: Tag = 'article', children, className = '', ...props }: CardProps) {
+  return <Tag className={`card ${className}`.trim()} {...props}>{children}</Tag>
 }
 
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {

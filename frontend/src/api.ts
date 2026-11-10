@@ -5,7 +5,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10_000,
+  timeout: 30_000,
 })
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & { _primroseRetried?: boolean }
@@ -62,7 +62,7 @@ type ResponseBody<Operation extends keyof operations, Status extends keyof opera
     ? Body
     : never
 
-export type Document = ResponseBody<'get_documents_documents_get', 200>[number]
+export type Document = ResponseBody<'get_documents_documents_get', 200>[number] & { uploaded_by?: number | null }
 export type RankedDocument = ResponseBody<'search_documents_documents_search_get', 200>[number]
 export type Entity = ResponseBody<'list_entities_entities_get', 200>['items'][number]
 export type EntitySearchResult = ResponseBody<'entity_search_entities_search_get', 200>[number]
@@ -102,6 +102,7 @@ export type CorpusSync = {
   id: number
   corpus_id: number
   status: string
+  stage: 'queued' | 'downloading' | 'embedding' | 'topics' | 'entities' | 'completed' | 'failed'
   papers_discovered: number
   papers_inserted: number
   existing_papers_skipped: number
@@ -112,9 +113,14 @@ export type CorpusSync = {
   error_details: string | null
   upper_cutoff: string | null
   created_at: string
+  documents_total: number
+  embeddings_completed: number
+  entities_completed: number
+  topics_created: number
 }
 
 export type CorpusAvailability = { available: boolean; corpus_id: number | null }
+export type GeminiSettings = { configured: boolean }
 
 export async function searchDocuments(query: string, entityId?: number, corpusId?: number) {
   const response = await api.get<ResponseBody<'search_documents_documents_search_get', 200>>(
@@ -247,6 +253,26 @@ export async function deleteCorpus(id: number) {
 
 export async function syncCorpus(id: number) {
   const response = await api.post<CorpusSync>(`/corpora/${id}/sync`)
+  return response.data
+}
+
+export async function getCorpusSyncStatus(id: number) {
+  const response = await api.get<CorpusSync>(`/corpora/${id}/sync-status`)
+  return response.data
+}
+
+export async function getGeminiSettings() {
+  const response = await api.get<GeminiSettings>('/settings/gemini')
+  return response.data
+}
+
+export async function saveGeminiSettings(apiKey: string) {
+  const response = await api.put<GeminiSettings>('/settings/gemini', { api_key: apiKey })
+  return response.data
+}
+
+export async function clearGeminiSettings() {
+  const response = await api.delete<GeminiSettings>('/settings/gemini')
   return response.data
 }
 

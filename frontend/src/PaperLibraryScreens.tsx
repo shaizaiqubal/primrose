@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Bookmark, LogOut, X } from 'lucide-react'
+import { Bookmark, LogOut, Settings, X } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   api,
@@ -12,10 +12,13 @@ import {
   getMyUploads,
   getMe,
   getCorpora,
+  getGeminiSettings,
   getRelatedDocuments,
   getRecommendedPapers,
   logout,
   removeBookmark,
+  clearGeminiSettings,
+  saveGeminiSettings,
   type Document,
   type Entity,
   type RankedDocument,
@@ -28,6 +31,12 @@ function byline(authors: string | null, year: number | null) {
   const names = authors?.split(',').map((name) => name.trim()).filter(Boolean) ?? []
   const authorText = names.length > 4 ? `${names.slice(0, 2).join(', ')} and ${names.length - 2} others` : names.join(', ')
   return [authorText, year].filter(Boolean).join(', ')
+}
+
+function externalPaperUrl(document: Document): string | null {
+  if (document.uploaded_by !== null) return document.url
+  if (document.arxiv_id?.trim()) return `https://arxiv.org/pdf/${document.arxiv_id.trim()}`
+  return document.url
 }
 
 export function PaperScreen() {
@@ -105,6 +114,7 @@ export function PaperScreen() {
   }
 
   const entityTypeOrder = ['method', 'model', 'dataset', 'task', 'metric']
+  const paperUrl = paper ? externalPaperUrl(paper) : null
   const entityTypes = [...new Set(entities.map((entity) => entity.type.trim()).filter(Boolean))].sort((first, second) => {
     const firstIndex = entityTypeOrder.indexOf(first.toLowerCase())
     const secondIndex = entityTypeOrder.indexOf(second.toLowerCase())
@@ -137,7 +147,7 @@ export function PaperScreen() {
             <p className="paper-reading__meta">{byline(paper.authors, paper.year_published)}</p>
             <h1>{paper.title}</h1>
             <div className="paper-reading__actions">
-              {paper.url && <a className="button button--primary" href={paper.url} rel="noreferrer" target="_blank">View full paper</a>}
+              {paperUrl && <a className="button button--primary" href={paperUrl} rel="noreferrer" target="_blank">View full paper</a>}
               <Button aria-label={saved ? 'Saved. Remove from saved' : 'Save for later'} onClick={() => void toggleBookmark()} title={saved ? 'Saved. Remove from saved' : 'Save for later'} variant="icon">
                 <Bookmark fill={saved ? 'currentColor' : 'none'} size={19} />
               </Button>
@@ -200,6 +210,7 @@ export function LibraryScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   async function loadLibrary() {
     setLoading(true)
@@ -247,6 +258,10 @@ export function LibraryScreen() {
     setDrawerOpen(false)
   }
 
+  function openSettings() {
+    setSettingsOpen(true)
+  }
+
   if (!localStorage.getItem('primrose-access-token')) {
     return <UnauthorizedScreen returnTo="/library" />
   }
@@ -269,10 +284,10 @@ export function LibraryScreen() {
       <Header authenticated activePath="/library" />
       <main className="library-page">
         <header className="browse-heading">
-          <h1>Your library</h1>
+          <div className="library-heading"><h1>Your library</h1><Button aria-label="Open settings" onClick={openSettings} title="Settings" variant="icon"><Settings size={20} /></Button></div>
           <div className="library-summary">
             <span>{email}</span>
-            <span>{corpus?.name ?? 'No corpus yet'}</span>
+            {corpus ? <Link className="library-summary__corpus" to="/corpora">{corpus.name}</Link> : <span>No corpus yet</span>}
             <span>{corpus ? `${corpus.document_count.toLocaleString()} pages` : '0 pages'}</span>
           </div>
         </header>
@@ -285,12 +300,59 @@ export function LibraryScreen() {
         )}
       </main>
       {drawerOpen && <AddPaperDrawer onClose={() => setDrawerOpen(false)} onCreated={handleAdded} />}
+      {settingsOpen && <GeminiSettingsDialog onClose={() => setSettingsOpen(false)} />}
       <Button className="library-logout" onClick={() => void handleLogout()} title="Log out">
         <LogOut aria-hidden="true" size={16} />
         Log out
       </Button>
     </div>
   )
+}
+
+function GeminiSettingsDialog({ onClose }: { onClose: () => void }) {
+  const [apiKey, setApiKey] = useState('')
+  const [configured, setConfigured] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    void getGeminiSettings().then((settings) => setConfigured(settings.configured)).catch((requestError) => setError(getApiErrorMessage(requestError, 'We could not load settings just now.')))
+  }, [])
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!apiKey.trim()) return
+    setSaving(true)
+    setError('')
+    setMessage('')
+    try {
+      await saveGeminiSettings(apiKey.trim())
+      setApiKey('')
+      setConfigured(true)
+      setMessage('API key saved.')
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'Could not save API key'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove() {
+    setSaving(true)
+    setError('')
+    try {
+      await clearGeminiSettings()
+      setConfigured(false)
+      setMessage('API key removed.')
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'Could not save API key. '))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><section aria-labelledby="settings-heading" aria-modal="true" className="settings-dialog" role="dialog"><div className="settings-dialog__heading"><div><p className="eyebrow">Settings</p><h2 id="settings-heading">AI provider</h2></div><Button aria-label="Close settings" onClick={onClose} title="Close" variant="icon"><X size={20} /></Button></div><p className="settings-dialog__copy">An AI provider powers entity extraction, topic naming, and reading recommendations. Your API key is stored securely by this local Primrose instance and is never shown again.</p><form onSubmit={(event) => void save(event)}><label className="field"><span className="field__label">API key</span><input autoComplete="off" className="field__input" onChange={(event) => setApiKey(event.target.value)} placeholder={configured ? 'Enter a new key to replace it' : 'Paste your API key'} type="password" value={apiKey} /></label><div className="settings-dialog__actions"><Button disabled={saving || !apiKey.trim()} type="submit" variant="primary">{saving ? 'Saving' : 'Save key'}</Button>{configured && <Button disabled={saving} onClick={() => void remove()} type="button">Remove key</Button>}</div></form>{message && <p className="settings-dialog__status">{message}</p>}{error && <p className="auth-error" role="alert">{error}</p>}</section></div>
 }
 
 function LibraryColumn({
