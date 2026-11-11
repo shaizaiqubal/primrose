@@ -1,0 +1,142 @@
+services:
+  api:
+    image: ghcr.io/shaizaiqubal/primrose-api:1.0.0
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://primroses1:password@postgres:5432/primroses1
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION_NAME: document_vectors
+      REDIS_HOST: cache
+      REDIS_PORT: "6379"
+      JWT_SECRET_FILE: /var/lib/primrose/jwt_secret
+    volumes:
+      - app_data:/var/lib/primrose
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+      interval: 30s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: primroses1
+      POSTGRES_USER: primroses1
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U primroses1 -d primroses1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  cache:
+    image: redis:8
+    volumes:
+      - cache_data:/data
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/shaizaiqubal/primrose-frontend:1.0.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/shaizaiqubal/primrose-worker:1.0.0
+    command: python -m backend.services.embedding_worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://primroses1:password@postgres:5432/primroses1
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION_NAME: document_vectors
+      REDIS_HOST: cache
+      REDIS_PORT: "6379"
+      JWT_SECRET_FILE: /var/lib/primrose/jwt_secret
+    volumes:
+      - app_data:/var/lib/primrose
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  entity-worker:
+    image: ghcr.io/shaizaiqubal/primrose-worker:1.0.0
+    command: python -m backend.services.entity_worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://primroses1:password@postgres:5432/primroses1
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION_NAME: document_vectors
+      REDIS_HOST: cache
+      REDIS_PORT: "6379"
+      JWT_SECRET_FILE: /var/lib/primrose/jwt_secret
+    volumes:
+      - app_data:/var/lib/primrose
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  topic-naming-worker:
+    image: ghcr.io/shaizaiqubal/primrose-worker:1.0.0
+    command: python -m backend.services.topic_naming_worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://primroses1:password@postgres:5432/primroses1
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION_NAME: document_vectors
+      REDIS_HOST: cache
+      REDIS_PORT: "6379"
+      JWT_SECRET_FILE: /var/lib/primrose/jwt_secret
+    volumes:
+      - app_data:/var/lib/primrose
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  cache_data:
+  app_data:
