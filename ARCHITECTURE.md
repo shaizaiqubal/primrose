@@ -1,306 +1,113 @@
-# Primrose - Architecture
+# Architecture
+
+Last reviewed: 2026-11-11
 
 ## Overview
 
-Primrose uses PostgreSQL, Qdrant, Redis, and a FastAPI orchestration layer:
-- PostgreSQL stores document metadata, ingestion state, topic assignments, and topic metadata.
-- Qdrant stores document embeddings and powers approximate nearest-neighbor retrieval.
-- Redis caches expensive retrieval, recommendation, and topic-read results.
-- FastAPI coordinates ingestion, semantic search, related-paper discovery, recommendations, and topic APIs.
+Primrose is a research-paper discovery application. Its React frontend talks to a FastAPI backend that searches papers semantically, serves corpus topics, and generates reading recommendations. PostgreSQL stores application records, Qdrant stores document vectors, and background workers process corpus documents outside the interactive search path.
 
-Embedding generation is handled by an asynchronous background worker. Recommendation generation is handled separately through a reranking plus LLM pipeline.
+## System Map
 
----
+```mermaid
+flowchart LR
+    researcher[Researcher] --> browser[React browser app]
+    browser --> api[FastAPI API]
 
-## Component Map
+    subgraph primrose[Primrose services]
+        api --> postgres[(PostgreSQL)]
+        api --> qdrant[(Qdrant vector store)]
+        api --> redis[(Redis streams and cache)]
+        redis --> embed[Embedding worker]
+        redis --> entity[Entity worker]
+        redis --> topic[Topic naming worker]
+        embed --> postgres
+        embed --> qdrant
+        entity --> postgres
+        topic --> postgres
+    end
 
-```text
-primrose/
-  backend/
-    app/
-      main.py           -- FastAPI routes and orchestration
-      config.py         -- Environment and service configuration
-      database.py       -- SQLAlchemy engine and session setup
-      models.py         -- PostgreSQL ORM models
-      schemas.py        -- API request/response models
-    corpus/
-      arxiv_client.py   -- arXiv API client
-      downloader.py     -- Corpus ingestion script
-    services/
-      embed.py          -- SentenceTransformer embedding helper
-      reranker.py       -- Cross-encoder reranking
-      search.py         -- Semantic search and related-paper lookup
-      vector_store.py   -- Qdrant client wrapper
-      recommendations.py -- Gemini-based reading journey generation
-      topic_worker.py   -- K-Means topic discovery
-      clusters.py       -- Gemini-based topic labeling
-      topics.py         -- Topic read APIs and Redis caching
-      queue_docs.py     -- Document job publishing
-      worker.py         -- Pub/Sub-triggered embedding worker
-
-  frontend/
-    src/
-      App.jsx           -- Root UI
-      api.js            -- API client
-      components/       -- Search, result, and recommendation UI
-  docker-compose.yaml   -- Local service orchestration
+    api --> arxiv[arXiv API]
+    api --> gemini[Google Gemini API]
+    topic --> gemini
 ```
 
----
+## Repository Tree
 
-## Services
+- [backend/](backend/) — FastAPI application and Python domain services; API routes use the service layer and PostgreSQL session factory.
+    - [app/](backend/app/) — application setup, shared configuration, persistence models, schemas, and security.
+        - [main.py](backend/app/main.py) — creates the FastAPI app, middleware, and router registrations.
+        - [routers/](backend/app/routers/) — HTTP boundary; handlers validate requests and delegate domain work.
+            - [auth.py](backend/app/routers/auth.py), [user.py](backend/app/routers/user.py) — sign-in, tokens, profile, bookmarks, and uploads.
+            - [documents.py](backend/app/routers/documents.py) — document CRUD, search, bookmarks, and manual paper creation.
+            - [corpora.py](backend/app/routers/corpora.py) — corpus configuration, sync requests, and sync status.
+            - [entities.py](backend/app/routers/entities.py), [topics.py](backend/app/routers/topics.py) — entity and topic browse/search endpoints.
+            - [recommendations.py](backend/app/routers/recommendations.py) — related-paper and reading-journey endpoints.
+            - [settings.py](backend/app/routers/settings.py) — application settings endpoints.
+        - [models.py](backend/app/models.py), [schemas.py](backend/app/schemas.py) — SQLAlchemy records and API request/response types.
+        - [database.py](backend/app/database.py), [config.py](backend/app/config.py) — database sessions and environment-backed settings.
+        - [security.py](backend/app/security.py), [secret_storage.py](backend/app/secret_storage.py) — token/password security and local secret handling.
+        - [cache.py](backend/app/cache.py) — shared Redis cache client and TTL.
+    - [services/](backend/services/) — domain workflows and external-service adapters, shared by routes and workers.
+        - [arxiv_client.py](backend/services/arxiv_client.py), [corpus_sync.py](backend/services/corpus_sync.py) — fetch papers from arXiv and coordinate corpus ingestion.
+        - [embedding_queue.py](backend/services/embedding_queue.py), [embedding_worker.py](backend/services/embedding_worker.py), [entity_worker.py](backend/services/entity_worker.py) — publish and consume Redis-stream document jobs.
+        - [embed.py](backend/services/embed.py), [vector_store.py](backend/services/vector_store.py) — create text embeddings and read/write Qdrant vectors.
+        - [search.py](backend/services/search.py), [reranker.py](backend/services/reranker.py) — retrieve candidates and rerank papers.
+        - [recommendations.py](backend/services/recommendations.py), [gemini.py](backend/services/gemini.py) — build cached reading journeys using Gemini.
+        - [entities.py](backend/services/entities.py), [aliases.json](backend/services/aliases.json) — extract, canonicalize, persist, and search paper entities.
+        - [topics.py](backend/services/topics.py), [topic_worker.py](backend/services/topic_worker.py), [clusters.py](backend/services/clusters.py), [topic_naming_worker.py](backend/services/topic_naming_worker.py) — cluster corpus embeddings and name topics.
+        - [app_settings.py](backend/services/app_settings.py), [prompts/](backend/services/prompts/), [send_email.py](backend/services/send_email.py) — stored settings, model prompts, and email delivery.
+    - [init_schema.py](backend/init_schema.py) — schema initialization utility.
+- [frontend/](frontend/) — React and TypeScript browser application, built with Vite.
+    - [index.html](frontend/index.html) loads [src/main.tsx](frontend/src/main.tsx), which mounts [src/App.tsx](frontend/src/App.tsx) and its route screens.
+    - [src/](frontend/src/) — [SearchScreen.tsx](frontend/src/SearchScreen.tsx), [PaperLibraryScreens.tsx](frontend/src/PaperLibraryScreens.tsx), [TopicScreens.tsx](frontend/src/TopicScreens.tsx), [EntityScreens.tsx](frontend/src/EntityScreens.tsx), [CorpusScreens.tsx](frontend/src/CorpusScreens.tsx), and [AuthScreens.tsx](frontend/src/AuthScreens.tsx) implement the main user workflows.
+    - [src/components/](frontend/src/components/) — shared UI and paper-result components.
+    - [src/api.ts](frontend/src/api.ts), [src/authApi.ts](frontend/src/authApi.ts), [src/api-schema.ts](frontend/src/api-schema.ts) — HTTP calls, auth calls, and generated OpenAPI types.
+    - [package.json](frontend/package.json) — frontend dependencies and build, lint, and typecheck scripts.
+- [alembic/](alembic/) — database migrations; [env.py](alembic/env.py), [versions/](alembic/versions/), and [baselines/](alembic/baselines/) define migration setup and schema history.
+- [tests/](tests/) — pytest coverage organized by boundary.
+    - [api/](tests/api/) tests HTTP routes; [services/](tests/services/) tests domain services; [integration/](tests/integration/) tests end-to-end service combinations.
+    - [conftest.py](tests/conftest.py) configures shared test fixtures.
+- [docker-compose.yaml](docker-compose.yaml) defines local services; [primrose-installer/docker-compose.prod.yaml](primrose-installer/docker-compose.prod.yaml) defines self-hosted production services.
+- [Dockerfile](Dockerfile), [Dockerfile.worker](Dockerfile.worker), [requirements.txt](requirements.txt), and [requirements.worker.txt](requirements.worker.txt) define the API and worker images and Python dependencies.
 
-| Service | Image | Role |
-| --- | --- | --- |
-| `postgres` | `postgres:17` | Persistent document metadata store |
-| `qdrant` | `qdrant/qdrant:latest` | Vector database for embeddings |
-| `cache` |	`redis`	| Cache for expensive API computations |
-| `init_schema` | built from repo | One-shot database schema bootstrap |
-| `worker` | built from repo | Processes embedding jobs delivered through Google Cloud Pub/Sub and writes vectors to Qdrant|
-| `api` | built from repo | FastAPI application and orchestration layer |
-| `frontend` | built from `./frontend` | React UI |
 
-The Docker Compose stack brings up the schema initializer before the API starts. Redis is used as a shared cache by the API, including topic list and topic detail responses.
+## Data Flow
 
----
+**Semantic search:** The frontend sends a query to `GET /documents/search`. The API embeds the query with Sentence Transformers, searches Qdrant (optionally filtering by corpus and entity), fetches matching document records from PostgreSQL, then reranks candidates with a Cross-Encoder. The API returns the ranked papers to the frontend.
 
-## Cache Architecture
+**Corpus sync (arXiv ingestion):** `POST /corpora/{id}/sync` records a sync and starts it in the API process. [`corpus_sync.py`](backend/services/corpus_sync.py) fetches papers from arXiv, stores documents and corpus membership in PostgreSQL, then publishes embedding and entity jobs to Redis streams. Workers write embeddings to Qdrant and entity results to PostgreSQL. After embeddings finish, the sync runs [`topic_worker.py`](backend/services/topic_worker.py), which clusters the corpus vectors and publishes a topic-naming job. The sync then waits for entity processing and records completion; the topic-naming worker calls Gemini to label clusters.
 
-Redis sits in front of the most expensive read paths in the API:
+**Reading journey:** On a paper page, the frontend requests `GET /documents/{id}/recommendations`. The API loads the paper, retrieves its nearest Qdrant papers, fetches their metadata from PostgreSQL, and reranks them with the Cross-Encoder. [`recommendations.py`](backend/services/recommendations.py) sends the paper and ranked candidates to Gemini, validates the five unique returned candidate IDs, joins the notes and order to the paper records, and caches the result in Redis. The frontend displays the ordered journey and each recommendation note below the paper abstract.
 
-- `backend/services/topics.py` caches the topic list, individual topic details, and topic paper lists.
-- `backend/services/recommendations.py` caches generated Reading Journeys per source paper.
+**Manual paper upload:** The library's Add a paper form collects title and abstract plus optional metadata; it does not upload a PDF. The frontend sends the form to `POST /documents`. The API stores a document with the signed-in user's ID in PostgreSQL, commits it, then publishes entity and embedding jobs to Redis. The entity worker uses Gemini to extract and persist entities; the embedding worker vectorizes the title and abstract, writes the vector to Qdrant, and marks the document embedded. The saved document appears in the user's uploads list.
 
-Both code paths fall back to PostgreSQL and Gemini when cache entries are missing, and they repopulate Redis after a successful response. The cache entries use a shared TTL so hot topics and frequently requested recommendation results stay fast without becoming stale indefinitely.
+## Cross-Cutting Concerns
 
----
+- **Authentication:** [`auth.py`](backend/app/routers/auth.py) and [`security.py`](backend/app/security.py) implement backend authentication. The frontend client attaches bearer access tokens and attempts refresh after a 401 response.
+- **Configuration and secrets:** [`config.py`](backend/app/config.py) reads environment variables and `.env` files; the Compose definitions provide service-specific connection settings. JWT secret handling is isolated in [`secret_storage.py`](backend/app/secret_storage.py).
+- **Errors and logs:** FastAPI handlers return HTTP errors for request failures; service failures are translated at route/service boundaries. The API and workers use Python logging.
+- **Schema changes:** SQLAlchemy models in [`models.py`](backend/app/models.py) describe relational data; Alembic migrations under [`alembic/versions/`](alembic/versions/) evolve the database schema.
+- **Validation:** Backend tests use pytest, while the frontend defines `build`, `lint`, and `typecheck` scripts in [`frontend/package.json`](frontend/package.json).
+- **Deployment:** Docker Compose runs the API, frontend, PostgreSQL, Qdrant, Redis, and separate embedding, entity, and topic-naming workers. The production definition is in [`primrose-installer/docker-compose.prod.yaml`](primrose-installer/docker-compose.prod.yaml).
 
-## Data Model
+## Invariants and Boundaries
 
-The core document record lives in PostgreSQL and includes:
+- PostgreSQL is the source of truth for paper metadata and application records; Qdrant holds derived vectors. Qdrant point IDs match document IDs.
+- Documents can be shared by corpus membership, while topics and document-topic assignments are scoped to a corpus.
+- Corpus sync publishes jobs only after document records are committed, so workers can load the records they process.
+- Search and recommendation requests run through the API. Embedding and entity extraction are handled by Redis-stream workers; corpus sync and topic clustering are not separate long-running worker services.
+- Corpus ingestion currently accepts arXiv as its source. Relationship discovery and a knowledge graph are planned, not part of the current architecture.
 
-- `id`
-- `arxiv_id`
-- `title`
-- `abstract`
-- `authors`
-- `year_published`
-- `url`
-- `categories`
-- `created_at`
-- `embedded`
+## Key Decisions
 
-The `embedded` flag is the coordination signal between PostgreSQL and Qdrant. A document can exist in the metadata store before its vector has been generated and written.
+No ADR files are present. PostgreSQL and Qdrant are separate so relational records and vector retrieval can use purpose-built stores. Embeddings and entity extraction run asynchronously so document ingestion does not require model work inside the request; semantic candidates are reranked before Gemini creates a reading journey.
 
-Topic data lives in two additional tables:
+## External Dependencies
 
-- `topics`
-- `document_topics`
-
-`topics` stores the cluster identifier, generated topic name, paper count, and cluster centroid. `document_topics` maps each document to exactly one topic cluster.
-
-Qdrant points are stored with the document ID as the point ID and a payload containing lightweight metadata such as `document_id`, `year_published`, and `authors`.
-
----
-
-## Ingestion
-
-```text
-
-            [POST /documents]
-                   |
-                   v
-              PostgreSQL
-                   |
-                   v
-          Publish document ID
-              to Pub/Sub
-                   |
-                   v
-        Cloud Run Worker (Push)
-                   |
-                   v
-              embed.py
-                   |
-        SentenceTransformer
-       (title + abstract → vector)
-                   |
-                   v
-          vector_store.py
-                   |
-                   v
-                Qdrant
-                   |
-                   v
-      PostgreSQL (embedded = true)
-                 
-```
-
-After a document is stored in PostgreSQL, the API publishes its document ID to a Google Cloud Pub/Sub topic. A dedicated Cloud Run worker receives the message, generates the embedding using SentenceTransformer, writes the vector to Qdrant, and marks the document as embedded in PostgreSQL. This asynchronous pipeline keeps document ingestion responsive while allowing embedding to scale independently of the API.
-
-The API also exposes `POST /documents/{id}/embed` for manually embedding a specific document when needed.
-
----
-
-## Topic Architecture
-
-```text
-Embedded documents in Qdrant
-   |
-topic_worker.py
-   |
-K-Means clustering 
-   |
-topics + document_topics in PostgreSQL
-   |
-clusters.py
-   |
-Representative papers from Qdrant centroids
-   |
-Gemini topic labeling
-   |
-topics.cluster_name update
-```
-
-Topic generation is a batch workflow built on top of the embedding corpus rather than a user-facing request path.
-
-1. `topic_worker.py` pulls up to 10,000 embedded vectors from Qdrant and clusters them with K-Means into 100 research topics.
-2. It writes one `topics` row per cluster with the cluster centroid and paper count.
-3. It writes `document_topics` rows to associate each document with its cluster.
-4. `clusters.py` finds unnamed topics, uses each cluster centroid to fetch representative documents from Qdrant, and asks Gemini to generate a concise research topic name.
-5. The generated label is stored back in `topics.cluster_name`.
-
-The topic read APIs in `backend/services/topics.py` then serve the clustered data through `/topics`, `/topics/{topic_id}`, and `/topics/{topic_id}/papers`, with Redis caching to avoid repeated database lookups for popular topic pages.
-
----
-
-## Semantic Search
-
-```text
-User query
-   |
-frontend
-   |
-GET /documents/search?q=...
-   |
-main.py
-   |
-embed.py
-   |
-vector_store.py
-   |
-Qdrant ANN search
-   |
-PostgreSQL metadata lookup
-   |
-reranker.py
-   |
-JSON response
-```
-
-Search works in two phases:
-
-1. The query text is embedded with `SentenceTransformer("all-MiniLM-L6-v2")`.
-2. Qdrant returns the nearest document IDs, which are then hydrated from PostgreSQL and reranked with the cross-encoder.
-
-The retrieval order from Qdrant is preserved through the metadata lookup so the reranker always receives candidates in the intended semantic order.
-
----
-
-## Related Papers
-
-```text
-Document ID
-   |
-GET /documents/{id}/related
-   |
-main.py
-   |
-search.py
-   |
-Qdrant retrieve stored vector
-   |
-Qdrant ANN search
-   |
-PostgreSQL metadata lookup
-   |
-reranker.py
-   |
-JSON response
-```
-
-Related-paper discovery reuses the same retrieval stack as search, but the query vector comes from the stored embedding for the requested document instead of from user input.
-
----
-
-## Recommendations
-
-```text
-Document ID
-   |
-GET /documents/{id}/recommendations
-   |
-main.py
-   |
-search.py -> related candidates
-   |
-reranker.py
-   |
-recommendations.py
-   |
-Gemini API
-   |
-Reading Journey response
-```
-
-The recommendation endpoint builds on the related-paper pipeline:
-
-- `search.py` collects a candidate set.
-- `reranker.py` scores the candidates for relevance.
-- `recommendations.py` sends the query paper plus candidates to Gemini.
-- The model returns a structured five-step reading journey with notes and positions.
-
-This design keeps retrieval and sequencing separate. The retriever finds relevant papers; the LLM explains what to read next and why.
-
----
-
-## Embedding Pipeline
-
-```text
-title + abstract
-   |
-embed.py
-   |
-all-MiniLM-L6-v2
-   |
-384-dimensional vector
-   |
-vector_store.py
-   |
-Qdrant upsert
-```
-
-The embedding input is the title and abstract concatenated with a blank line between them. That gives the model both the concise topic signal in the title and the detailed context in the abstract.
-
-Qdrant is configured with cosine distance and a vector size of 384 to match the SentenceTransformer output.
-
----
-
-## Key Design Decisions
-
-**Why PostgreSQL and Qdrant?** PostgreSQL is the system of record for structured paper metadata. Qdrant is optimized for nearest-neighbor search. Splitting them keeps each store focused on the job it does best.
-
-**Why an asynchronous Pub/Sub worker?** Embedding generation is significantly slower than ordinary request handling. Rather than blocking API requests, the API publishes an embedding job to Google Cloud Pub/Sub. A dedicated Cloud Run worker processes the job independently, allowing ingestion to remain responsive while enabling automatic retries, independent scaling, and reliable background processing.
-
-**Why keep an explicit `embedded` flag?** The flag makes the data flow observable and allows the worker to resume interrupted ingestion without duplicating work.
-
-**Why rerank after ANN search?** Qdrant is good at candidate generation, while the cross-encoder is better at fine-grained relevance ordering. Using both improves result quality without forcing the vector store to do everything.
-
-**Why a separate recommendation step?** Recommendations are not just "more similar papers". The Gemini step turns ranked candidates into an ordered reading path with short explanations.
-
----
-
-## Operational Notes
-
-- `backend/init_schema.py` creates the database tables at startup.
-
+- **PostgreSQL:** relational records, corpus state, users, and derived topic assignments.
+- **Qdrant:** approximate nearest-neighbor search over paper embeddings.
+- **Redis:** consumer-group streams for worker jobs and cache entries for hot topic and recommendation reads.
+- **arXiv API:** corpus paper discovery and metadata ingestion.
+- **Google Gemini:** topic names and generated reading recommendations.
+- **Sentence Transformers and Cross-Encoder:** local query/document embeddings and candidate reranking.
+- **Docker Compose:** local development and self-hosted service orchestration.

@@ -1,288 +1,263 @@
+<div align="center">
+
+<img src="./assets/logo.png" alt="Primrose" width="180" />
+
 # Primrose
 
-> Research intelligence. 
+### Your research, connected.
 
-![Primrose](./assets/hero.png)
+*Discover scientific literature, explore research topics, and find connections between papers; all in your own research workspace.*
 
-![Stage](https://img.shields.io/badge/stage-3%20of%207-rose?style=flat-square)
-![Status](https://img.shields.io/badge/status-active-brightgreen?style=flat-square)
-![Python](https://img.shields.io/badge/python-3.13-blue?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.138-009688?style=flat-square&logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-19.2.7-61DAFB?style=flat-square&logo=react&logoColor=black)
-![Docker](https://img.shields.io/badge/docker-compose-2496ED?style=flat-square&logo=docker&logoColor=white)
+<a href="https://github.com/shaizaiqubal/primrose/releases/latest/download/Primrose.zip">
+  <img src="https://img.shields.io/badge/Download-0E2049?style=for-the-badge&logo=apple&logoColor=white" alt="Download Primrose" />
+</a>
+
+<p>For Apple Silicon Macs · Requires Docker Desktop</p>
+
+
+
+
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat-square&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-frontend-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey?style=flat-square)
-![Tests](https://github.com/shaizaiqubal/primrose/actions/workflows/tests.yaml/badge.svg?)
 
-🌸 **Live application:** https://primroses.vercel.app
 
-Primrose is an AI-powered research exploration platform built to make scientific literature easier to navigate.
 
-It combines semantic retrieval, neural reranking, batch topic discovery, and LLM-guided recommendations to help researchers discover not only relevant papers, but what to read next and how papers cluster into broader research themes. Over time, Primrose will evolve into a research intelligence platform capable of discovering relationships between ideas and building an interactive knowledge graph of scientific literature.
+</div>
 
 ---
 
-## Development Roadmap
+Primrose is a local-first research discovery platform built around the way you explore scientific literature. Create a research corpus from arXiv, discover connections between papers, explore emerging topics, and build reading journeys through related work.
 
-| Stage | Status | Capability |
-|-------|--------|------------|
-| 1 | **Complete** | Semantic Discovery Foundation |
-| 2 | **Complete** | Recommendation Engine |
-| 3 | **Complete** | Topic Discovery |
-| 4 | Planned | Entity Extraction |
-| 5 | Planned | Relationship Discovery |
-| 6 | Planned | Knowledge Graph |
-| 7 | Planned | Research Intelligence Platform |
-
----
+Your corpus, your papers, your research workspace.
 
 ## Features
-### Semantic Discovery
 
-Research papers are embedded into a shared vector space using transformer models, allowing Primrose to retrieve conceptually related work even when papers share little vocabulary.
+### Build your own research corpus
 
-- Semantic search
-- Related paper discovery
-- Transformer embeddings (all-MiniLM-L6-v2)
-- Qdrant vector search
-- PostgreSQL metadata storage
+Create a corpus directly from arXiv, tailored to your research interests.
 
-### Reading Journey
+- Choose your own arXiv categories.
+- Set custom start and end dates.
+- Configure document limits and sorting preferences.
+- Sync papers directly from arXiv.
+- Explore your corpus through semantic search and research topics.
 
-Rather than returning only similar papers, Primrose generates a **Reading Journey**: a curated sequence of papers explaining what to read next and why.
-The recommendation engine combines neural retrieval, reranking, and LLM reasoning while respecting the retriever's ranking.
+<img src="./assets/corpus.png"/>
 
-- Cross-Encoder reranking
-- AI-generated Reading Journeys
-- Recommendation notes
-- Educational paper sequencing
 
-### Topic Discovery
+### Local-first research
 
-Primrose clusters embedded papers into research topics, assigns each document to a topic cluster, and uses Gemini to generate concise topic names. The topic browser exposes these clusters through the API and frontend so users can explore a corpus by theme instead of only by individual paper.
+Your research workspace runs locally on your machine.
 
-- K-Means topic clustering
-- Topic naming with Gemini
-- Topic list and topic detail pages
-- Cluster paper counts and representative papers
+After the initial corpus ingestion and processing, core functionality runs locally without requiring an external AI API or continuous internet connection.
 
----
- 
+- Local semantic search and paper retrieval.
+- Local transformer embeddings and Cross-Encoder reranking.
+- Locally stored papers, vectors, topics, and bookmarks.
+- Your research data stays on your machine.
 
-## Evaluation
+*External services are still used for corpus synchronization and optional AI-powered features such as topic naming and reading recommendations.*
 
-***Manual evaluation with 7 representative queries:***
+<img src="./assets/home.png"/>
 
-| Metric | Score |
-|--------|-------|
-| Precision@5 | 0.89 |
-| MRR | 0.93 |
-|nDCG@10| 0.91|
 
-Most queries retrieved highly relevant papers with strong topical alignment. However, the pipeline still struggles with broad or emerging research topics when the corpus contains few directly relevant papers, occasionally returning tangential results. Since the reranker can only reorder retrieved candidates, its overall performance is ultimately constrained by the quality and coverage of the initial retrieval stage and the underlying research corpus.
+### Add your own papers
 
----
+Add papers beyond your arXiv corpus and discover where they fit into your research.
 
-## Architecture
+- Upload papers using their title and abstract.
+- Find related papers from your existing corpus.
+- Explore connections through semantic similarity.
+- Keep personal uploads alongside your research library.
 
-```
-                    React
-                      │
-                 FastAPI API
-          ┌───────────┴───────────┐
-          │                       │
-     PostgreSQL               Qdrant
-   Paper Metadata        Vector Embeddings
-          ▲                       ▲
-          └──── Embedding Worker ─┘
-                      │
-          Sentence Transformers
-                      │
-                   Redis Cache
-                      │
-            Topic Worker + Gemini
-                      │
-             Topic Tables in PostgreSQL
-                      │
-            Cross-Encoder Reranker
-                      │
-          Gemini Recommendation Engine
-                      │
-               Reading Journey
-```
+<img src="./assets/upload.png"/>
 
-The API orchestrates retrieval while independent services handle embedding generation, cache-backed reads, topic discovery, and recommendation.
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for full dataflow diagrams.
+### Reading journeys
 
----
+Go beyond a list of similar papers. Get a guided sequence of papers to help you understand a research area and decide what to read next.
 
-## Retrieval Pipeline
+- Semantic retrieval and Cross-Encoder reranking.
+- Gemini-generated reading journeys.
+- Explanations for recommended papers.
+- Five-paper reading sequences.
 
-```
-Query
-   │
-Sentence Transformer
-   │
-Qdrant ANN Search
-   │
-Top-k Candidates
-   │
-Cross-Encoder Reranker
-   ├──────────────┐
-   │              │
-Related      Recommendation
- Papers          Engine
-                    │
-            Reading Journey
-```
+<img src="./assets/journey.png"/>
 
-Topic discovery follows a separate batch path:
 
-```text
-Embedded Corpus
-   │
-Topic Worker
-   │
-K-Means Clustering
-   │
-topics / document_topics
-   │
-Gemini Topic Labeling
-   │
-Topic Browser
-```
+### Research topic discovery
 
-The retriever is responsible for finding relevant papers while the LLM is responsible for educational sequencing and recommendation quality. Topic discovery is a corpus-wide batch job that turns the same embeddings into navigable research themes.
+Explore your corpus through clusters of related papers rather than individual search results.
 
----
+- K-Means clustering over paper embeddings.
+- Automatically generated topic names.
+- Topic pages with paper counts and representative papers.
+- Browse research themes across your corpus.
 
-## Tech Stack
+### Personal library
 
-**Frontend** -- React, Vite, Axios
+Keep your research organized in one place.
 
-**Backend** -- FastAPI, SQLAlchemy, PostgreSQL, Qdrant, Sentence Transformers, Cross-Encoder, Google Gemini
+- Bookmark papers for later.
+- Manage your own uploaded papers.
+- Explore papers across your corpus and personal library.
 
-**Cache** -- Redis for cached recommendation journeys and topic read responses
 
-**Infrastructure** -- Docker, Docker Compose
 
----
+## Installation
 
-## Design Decisions
+Primrose is distributed as a macOS app. You do not need Python, Node.js,
+Git, or the Primrose source code to use it.
 
-**Separate stores for metadata and vectors.** PostgreSQL handles structured metadata; Qdrant handles approximate nearest-neighbor search with HNSW indexing. Each store is used for what it does well.
+### Requirements
 
-**Asynchronous embedding worker.** Embedding generation does not block the request cycle. Documents are available for metadata queries immediately after ingestion and become searchable once the worker processes them.
+-   A Mac with Apple Silicon
+-   [Docker Desktop for
+    Mac](https://www.docker.com/products/docker-desktop/)
+-   An internet connection for the initial image downloads and services
+    that use external APIs
 
-**Semantic search over keyword matching.** The same concept appears under dozens of names in the research literature. Embedding-based retrieval captures intent rather than surface terms.
+### Install Primrose
 
-**Hybrid recommendation pipeline.** Semantic retrieval identifies relevant papers, while Cross-Encoder reranking improves candidate quality. The LLM then converts retrieved papers into a coherent Reading Journey instead of acting as a second retriever.
+1.  Download the latest `Primrose.zip` from the project's [GitHub
+    Releases](https://github.com/shaizaiqubal/primrose/releases).
+2.  Extract the ZIP.
+3.  Move `PrimroseLauncher.app` into your **Applications** folder.
+4.  Open Docker Desktop and wait until it is running.
+5.  Open Primrose from Applications.
 
-**Separate topic pipeline.** Topic discovery is computed offline from the embedding corpus, which keeps topic browsing fast and lets the UI show stable cluster counts, names, and representative papers.
+If macOS blocks the app because it was downloaded from the internet,
+control-click `PrimroseLauncher.app`, choose **Open**, and confirm the
+prompt. You may need to do this the first time.
 
-**Redis cache for hot paths.** Topic list/detail pages and generated Reading Journeys are cached so the API can serve repeat requests quickly without recomputing the same database and LLM work.
+### Start using Primrose
 
----
+1.  Open the launcher.
+2.  Select **Start Primrose**.
+3.  Wait while the services start. The launcher waits for the API's
+    Uvicorn startup message before marking startup complete.
+4.  Select **Open** to open Primrose in your browser.
+5.  Use **Stop** in the launcher when you are finished.
 
-## Running Locally
+Your papers and application data are stored in Docker volumes on your
+Mac. The launcher starts the bundled production Compose configuration and
+downloads the required container images on first use. Later starts reuse
+the downloaded images unless an updated image is published.
 
-1. Create environment file:
+## Development
 
-```bash
-cp backend/.env.example backend/.env
-```
+The macOS launcher is a separate SwiftUI project; the application itself is made up of the
+React frontend, FastAPI backend, and Docker Compose services.
 
-2. Start the development stack:
+### Requirements
 
-```bash
+-   Python 3.13
+-   Node.js and npm
+-   Docker Desktop or Docker Engine with Docker Compose v2
+
+### Run the application locally
+
+Clone the repository and start the development stack from the repository
+root:
+
+``` bash
+git clone https://github.com/shaizaiqubal/primrose.git
+cd primrose
 docker compose up --build
 ```
 
-This starts:
+The development Compose configuration is `docker-compose.yaml`. The
+self-hosted production configuration used by the launcher is
+`primrose-installer/docker-compose.prod.yaml`.
 
-| Service  | URL                        |
-| -------- | -------------------------- |
-| Frontend | http://localhost:5173      |
-| API      | http://localhost:8000      |
-| API Docs | http://localhost:8000/docs |
+To stop the development stack:
 
----
+``` bash
+docker compose down
+```
 
-## Testing
+This keeps named volumes. Add `-v` only when you deliberately want to
+delete the local development data.
 
-Primrose keeps the development and test stacks separate. The test environment uses its own PostgreSQL container, its own Qdrant container, and a separate Qdrant collection name so the development database and vector store stay untouched.
+### Testing
 
-### Start the test environment
+The test stack is isolated from the development database and Qdrant
+instance.
 
-```bash
+Start it:
+
+``` bash
 docker compose --env-file .env.test -f docker-compose.test.yml up -d --build
 ```
 
-This starts:
+Run the test suite:
 
-| Service | Purpose |
-|--------|---------|
-| `test-postgres` | Isolated PostgreSQL database for tests |
-| `test-qdrant` | Isolated Qdrant instance for tests |
-| `api-test` | App container used to run pytest |
-
-### Run pytest
-
-```bash
+``` bash
 docker compose --env-file .env.test -f docker-compose.test.yml exec -T api-test python -m pytest
 ```
 
-At test startup, pytest prints the PostgreSQL database and Qdrant collection it is using and refuses to run if they match the development environment.
+Stop it:
 
-### Destroy the test environment
-
-```bash
-docker compose --env-file .env.test -f docker-compose.test.yml down -v
+``` bash
+docker compose --env-file .env.test -f docker-compose.test.yml down
 ```
 
-The `-v` flag removes the isolated test volumes so the next run starts from a clean slate.
+The test volumes are retained. Test fixtures reset the database and
+Qdrant collection before each test run.
 
+### Repository layout
 
-## API
+``` text
+backend/
+  app/             FastAPI app, routes, models, schemas, security
+  services/         Search, ingestion, embeddings, entities, topics, recommendations
+frontend/           React + TypeScript application
+alembic/            Database migrations
+tests/              API, service, and integration tests
+primrose-installer/ Production Compose configuration and installer
+docker-compose.yaml Development services
+```
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /documents | List all documents |
-| GET | /documents/{id} | Retrieve a single document |
-| GET | /documents/search | Semantic search |
-| GET | /documents/{id}/related | Related paper discovery |
-| GET | /documents/{id}/recommendations | Reading Journey |
-| GET | /topics | Topic list |
-| GET | /topics/{topic_id} | Topic detail |
-| GET | /topics/{topic_id}/papers | Papers in a topic |
-| POST | /documents | Ingest a new document |
-| PUT | /documents/{id} | Update document metadata |
-| DELETE | /documents/{id} | Remove a document |
+### How the services fit together
 
-`POST`, `PUT`, and `DELETE` currently serve developer and admin workflows and are not exposed in the frontend.
+-   **FastAPI** handles authentication, paper and corpus APIs, semantic
+    search, topics, entities, and recommendations.
+-   **PostgreSQL** stores paper metadata, users, bookmarks, corpus
+    records, and topic assignments.
+-   **Qdrant** stores document vectors used for semantic retrieval.
+-   **Redis** carries background jobs through streams and caches
+    frequently requested topic and recommendation data.
+-   **Embedding worker** creates document embeddings and writes them to
+    Qdrant.
+-   **Entity worker** extracts paper entities and stores the results in
+    PostgreSQL.
+-   **Topic naming worker** uses Gemini to label topic clusters.
+-   **React** provides the browser interface.
 
----
+Corpus sync fetches arXiv metadata, saves paper records, and publishes
+embedding and entity jobs to Redis. Once corpus embeddings are ready,
+topic clustering runs for that corpus and topic naming is queued
+separately.
 
-## Known Limitations
+For the detailed service map, data flows, repository responsibilities,
+and architecture boundaries, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-- General-purpose embedding model (domain-specific models planned)
-- No user authentication or access control yet
-- Frontend is read-only; corpus management requires direct API access
-- Recommendation quality depends on the selected LLM
-- Reading journeys are context-aware rather than user-personalized
-- Topic names are generated from cluster representatives, so they may need occasional refinement for edge cases
-
-
----
-
-## What's Next 
-
-- Domain-specific embedding model (SPECTER2)
-- User authentication and corpus management interface
-- Citation graph integration
-- Knowledge graph construction
----
+## Technology
+| Area | Technologies |
+| --- | --- |
+| Frontend | React, TypeScript, Vite |
+| API | Python, FastAPI, SQLAlchemy |
+| Relational data | PostgreSQL |
+| Vector search | Qdrant |
+| Background jobs and cache | Redis streams, Redis cache |
+| Embeddings and reranking | Sentence Transformers, Cross-Encoder |
+| Recommendations and topic labels | Google Gemini |
+| Paper source | arXiv |
+| Local deployment | Docker Compose |
 
 ## License
 
-[CC BY-NC 4.0](./LICENSE) -- free to use and adapt, not for commercial purposes.
+[CC BY-NC 4.0](./LICENSE). Free to use and adapt, not for commercial purposes.
