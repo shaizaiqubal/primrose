@@ -133,6 +133,13 @@ If macOS blocks the app because it was downloaded from the internet,
 control-click `PrimroseLauncher.app`, choose **Open**, and confirm the
 prompt. You may need to do this the first time.
 
+> [!IMPORTANT]
+> **Gemini API key required**
+>
+> Before creating your first corpus, configure a Gemini API key in Primrose's settings. Gemini is used for topic naming, entity recognition, and generating reading journeys and recommendations. Without a configured key, these features will not work.
+>
+> You can get an API key from [Google AI Studio](https://aistudio.google.com/apikey).
+> 
 ### Start using Primrose
 
 1.  Open the launcher.
@@ -140,7 +147,9 @@ prompt. You may need to do this the first time.
 3.  Wait while the services start. The launcher waits for the API's
     Uvicorn startup message before marking startup complete.
 4.  Select **Open** to open Primrose in your browser.
-5.  Use **Stop** in the launcher when you are finished.
+5.  Create an account and enter a your API key in the settings.
+6.  Create your corpus and start researching!
+7.  Use **Stop** in the launcher when you are finished.
 
 Your papers and application data are stored in Docker volumes on your
 Mac. The launcher starts the bundled production Compose configuration and
