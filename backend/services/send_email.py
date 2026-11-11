@@ -2,12 +2,10 @@ from fastapi import HTTPException, status
 import smtplib
 from email.message import EmailMessage
 from html import escape
-from backend.app.config import FRONTEND_URL
-SENDER_PASSWORD = "annm dbpp wdke odvr"
+SENDER_PASSWORD = "etph eqzx ranv blre"
 SMTP_SERVER = "smtp.gmail.com"  
 SMTP_PORT = 587
 SENDER_EMAIL = "primrose.notifications@gmail.com"
-
 VERIFICATION_EMAIL_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,12 +65,6 @@ VERIFICATION_EMAIL_TEMPLATE = """<!DOCTYPE html>
         <tr>
           <td class="email-pad" style="padding:28px 40px 40px; font-family:'Work Sans', Arial, sans-serif;">
             <div style="border-top:1px solid #2A2E3D; padding-top:20px;">
-              <p style="margin:0 0 6px; font-size:16px; line-height:1.6; color:#A8AEC2;">
-                Button not working? Paste this link into your browser:
-              </p>
-              <p style="margin:0; font-size:16px; line-height:1.6; word-break:break-all;">
-                <a href="{verification_url}" style="color:#F0D77A; text-decoration:underline;">{verification_url}</a>
-              </p>
               <p style="margin:20px 0 0; font-size:16px; line-height:1.6; color:#A8AEC2;">
                 If you did not create a Primrose account, you can ignore this email.
               </p>
@@ -101,7 +93,7 @@ def send_verification_email(email: str, token: str) -> None:
             detail="Email sender is not configured",
         )
 
-    frontend_url = (FRONTEND_URL or "http://localhost:5173").rstrip("/")
+    frontend_url = ("http://localhost:3000").rstrip("/")
     verification_url = f"{frontend_url}/verify-email?token={token}"
 
     msg = EmailMessage()

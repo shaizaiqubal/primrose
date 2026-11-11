@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-origins = ["http://localhost:5173"]
+origins = ["http://localhost:5173", "http://localhost:3000"]
 if FRONTEND_URL:
     origins.append(FRONTEND_URL)
 
@@ -31,6 +31,9 @@ app.add_middleware(
 def root() -> dict:
     return {"message": "Primrose server is running!"}
 
+@app.get("/health")
+def health() -> dict:
+    return {"status": "healthy"}
 
 app.include_router(documents.router)
 app.include_router(entities.router)

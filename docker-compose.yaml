@@ -20,8 +20,6 @@ services:
         condition: service_healthy
       cache:
         condition: service_started
-      # init_schema:
-      #   condition: service_completed_successfully
     volumes:
       - ./backend:/app/backend
       - ./alembic:/app/alembic
@@ -48,15 +46,6 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
-
-  # init_schema:
-  #   build: .
-  #   command: python -m backend.init_schema
-  #   environment:
-  #     DATABASE_URL: ${DATABASE_URL}
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
 
   frontend:
     build:
