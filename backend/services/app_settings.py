@@ -10,6 +10,9 @@ from backend.app.models import AppSetting
 
 GEMINI_KEY = "gemini_api_key"
 
+def is_gemini_api_key_configured() -> bool:
+    with SessionLocal() as db:
+        return db.get(AppSetting, GEMINI_KEY) is not None
 
 def _fernet() -> Fernet:
     if not JWT_SECRET:
