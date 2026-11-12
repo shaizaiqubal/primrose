@@ -29,7 +29,7 @@
 
 ---
 
-Primrose is a local-first research discovery platform built around the way you explore scientific literature. Create a research corpus from arXiv, discover connections between papers, explore emerging topics, and build reading journeys through related work.
+Primrose is a research discovery platform built around the way you explore scientific literature. Create a research corpus from arXiv, discover connections between papers, explore emerging topics, and build reading journeys through related work.
 
 Your corpus, your papers, your research workspace.
 
@@ -46,23 +46,6 @@ Create a corpus directly from arXiv, tailored to your research interests.
 - Explore your corpus through semantic search and research topics.
 
 <img src="./assets/corpus.png"/>
-
-
-### Local-first research
-
-Your research workspace runs locally on your machine.
-
-After the initial corpus ingestion and processing, core functionality runs locally without requiring an external AI API or continuous internet connection.
-
-- Local semantic search and paper retrieval.
-- Local transformer embeddings and Cross-Encoder reranking.
-- Locally stored papers, vectors, topics, and bookmarks.
-- Your research data stays on your machine.
-
-*External services are still used for corpus synchronization and optional AI-powered features such as topic naming and reading recommendations.*
-
-<img src="./assets/home.png"/>
-
 
 ### Add your own papers
 
@@ -97,6 +80,8 @@ Explore your corpus through clusters of related papers rather than individual se
 - Topic pages with paper counts and representative papers.
 - Browse research themes across your corpus.
 
+<img src="./assets/home.png"/>
+
 ### Personal library
 
 Keep your research organized in one place.
@@ -104,6 +89,16 @@ Keep your research organized in one place.
 - Bookmark papers for later.
 - Manage your own uploaded papers.
 - Explore papers across your corpus and personal library.
+
+### Self-hosted research environment
+
+Primrose runs as a collection of services on your own machine, giving you control over your research environment and data.
+
+- Your papers, embeddings, topics, and bookmarks are stored in your own database and vector store.
+- The API, frontend, database, and background workers run through Docker.
+- No third-party hosted research workspace or subscription is required.
+- External services such as arXiv and Gemini are used where needed for ingestion and AI-powered features.
+
 
 
 
